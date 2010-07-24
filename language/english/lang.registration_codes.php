@@ -16,8 +16,19 @@ $lang = array(
 
 'rogee_rc_language' => 'RogEE Registration Codes speaks English!',
 
-'rogee_rc_group_id' => 'Destination member group ID',
-'rogee_rc_code' => 'Registration code',
+'rogee_rc_general_preferences' => 'General Preferences',
+'rogee_rc_replace_captcha' => 'Replace the default CAPTCHA field?',
+'rogee_rc_require_valid_code' => 'Require valid code to register?',
+'rogee_rc_enable_multi_site' => 'Make codes site-specific?',
+
+'rogee_rc_registration_codes' => 'Registration Codes',
+'rogee_rc_destination_group' => 'Destination member group ID',
+'rogee_rc_code_string' => 'Code / passphrase',
+'rogee_rc_site_id' => 'Site',
+
+'rogee_rc_new' => 'New',
+
+'rogee_rc_data_preferences' => 'Data Preferences',
 
 // END
 ''=>''

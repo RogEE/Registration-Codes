@@ -7,7 +7,7 @@
 		<item>
 			<title>Version 0.1</title>
 			<!-- Additional tag required for NSM Addon Updater -->
-			<ee_addon:version>0.1</ee_addon:version>
+			<ee_addon:version>0.1.0</ee_addon:version>
 			<link>http://michaelrog.com/go/ee/</link>
 			<pubDate>Wed, 21 July 2010 11:11:11 +0000</pubDate>
 			<description><![CDATA[
