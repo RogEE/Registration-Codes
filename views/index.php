@@ -32,10 +32,21 @@ $this->table->set_heading(
     array('data' => lang('rogee_rc_site_id'), 'style' => 'width:35%;')
 );
 
+if (count($codes_fields) > 1)
+{
+	// show instructions if there are existing rows
+	$this->table->add_row(
+		array('data' => "", 'style' => 'width:5%;'),
+		array('data' => "<em>To delete a row, leave the text box blank.</em>", 'style' => 'width:30%;'),
+		array('data' => "", 'style' => 'width:30%;'),
+		array('data' => ($show_multi_site_field == 'yes' ? "" : "<em>Enable MSM to use multi-site features.</em>"), 'style' => 'width:35%;')
+	);
+}
+
 foreach ($codes_fields as $key => $fields)
 {
 	$this->table->add_row(
-		array('data' => $key, 'style' => 'width:5%;'),
+		array('data' => ($key == "new" ? "<em>(new)</em>" : ""), 'style' => 'width:5%;'),
 		array('data' => $fields['code_string'], 'style' => 'width:30%;'),
 		array('data' => $fields['destination_group'], 'style' => 'width:30%;'),
 		array('data' => $fields['site_id'], 'style' => 'width:35%;')
@@ -48,21 +59,9 @@ $this->table->clear() ;
 
 ?>
 
-<p><?=form_submit('submit', lang('submit'), 'class="submit"')?></p>
-
+<p><?=form_submit('submit', lang('rogee_rc_save'), 'class="submit"')?> <?=form_submit('submit_finished', lang('rogee_rc_save_finished'), 'class="submit"')?></p>
 
 <?=form_close()?>
-
-<p>1==1: <?=(1==1?"TRUE":"FALSE")?></p>
-<p>2==1: <?=(2==1?"TRUE":"FALSE")?></p>
-<p>"" <?=(""?"TRUE":"FALSE")?></p>
-<p>"hi" <?=("hi"?"TRUE":"FALSE")?></p>
-<p>"0": <?=("0"?"TRUE":"FALSE")?></p>
-<p>0: <?=(0?"TRUE":"FALSE")?></p>
-<p>TRUE: <?=(TRUE?"TRUE":"FALSE")?></p>
-<p>FALSE: <?=(FALSE?"TRUE":"FALSE")?></p>
-<p>NULL: <?=(NULL?"TRUE":"FALSE")?></p>
-
 
 <?php
 
