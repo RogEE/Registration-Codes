@@ -24,21 +24,21 @@ Changelog:
 if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
 // -----------------------------------------
-//	Begin class
+//	Here goes nothin...
 // -----------------------------------------
 
 class Registration_codes_ext
 {
 
-	var $settings		= array() ;
+	var $settings = array();
     	
-	var $name			= "RogEE Registration Codes" ;
-	var $version		= "0.1.0" ;
-	var $description	= "Automatically places new members into pre-specified groups according to registration codes." ;
-	var $settings_exist	= "y" ;
-	var $docs_url		= "http//michaelrog.com/go/ee" ;
+	var $name = "RogEE Registration Codes" ;
+	var $version = "0.1.0" ;
+	var $description = "Automatically places new members into pre-specified groups according to registration codes." ;
+	var $settings_exist = "y" ;
+	var $docs_url = "http//michaelrog.com/go/ee" ;
 
-	var $dev_on			= TRUE ;
+	var $dev_on	= TRUE ;
 	
 	
 	
@@ -57,15 +57,12 @@ class Registration_codes_ext
 		
 		// settings (?)
 		$this->settings = $settings;
-		// $this->settings = (empty($settings)) ? $this->settings() : $settings ;
+		// $this->settings = (empty($settings)) ? $this->settings() : $settings;
 		
 		// localize
 		$this->EE->lang->loadfile('registration_codes');
-		$this->name = $this->EE->lang->line('registration_codes_module_name') ;
-		$this->description = $this->EE->lang->line('registration_codes_module_description') ;
-		
-		// log
-		// $this->debug("Registration Codes EXT constructed.") ;
+		$this->name = $this->EE->lang->line('registration_codes_module_name');
+		$this->description = $this->EE->lang->line('registration_codes_module_description');
 	
 	} // END Constructor
 	
@@ -85,19 +82,19 @@ class Registration_codes_ext
 	function activate_extension()
 	{
 	
-		// default settings
+		// Default settings
 	
 		$this->settings = array(
-			'replace_captcha' => 'no',
+			// 'replace_captcha' => 'no',	
 			'require_valid_code' => 'no',
 			'enable_multi_site' => 'no'
 		);
 		
-		// register the hooks
+		// Register the hooks.
 		
-		$data = array(
+		$hook = array(
 			'class'		=> __CLASS__,
-			'method'	=> 'member_member_register',
+			'method'	=> 'execute_registration_code',
 			'hook'		=> 'member_member_register',
 			'settings'	=> serialize($this->settings),
 			'priority'	=> 2,
@@ -107,11 +104,23 @@ class Registration_codes_ext
 		
 		$this->EE->db->insert('extensions', $data);
 		
-		// create database table
+		$hook = array(
+			'class'		=> __CLASS__,
+			'method'	=> 'validate_registration_code',
+			'hook'		=> 'member_member_register_start',
+			'settings'	=> serialize($this->settings),
+			'priority'	=> 2,
+			'version'	=> $this->version,
+			'enabled'	=> 'y'
+		);
+		
+		$this->EE->db->insert('extensions', $data);
+		
+		// Create database table.
 		
 		if (! $this->EE->db->table_exists('rogee_registration_codes'))
 		{
-			$this->EE->load->dbforge() ;
+			$this->EE->load->dbforge();
 			$this->EE->dbforge->add_field(array(
 				'code_id'    => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'auto_increment' => TRUE),
 				'site_id'    => array('type' => 'INT', 'constraint' => 2, 'unsigned' => TRUE, 'default' => 0),				
@@ -125,7 +134,7 @@ class Registration_codes_ext
 		}		
 		
 		// log		
-		$this->debug("Registration Codes EXT activated: $this->version") ;
+		$this->debug("Registration Codes EXT activated: version $this->version");
 		
 	} // END activate_extension()
 	
@@ -149,11 +158,6 @@ class Registration_codes_ext
 		if ($current == '' OR $current == $this->version)
 		{
 			return FALSE;
-		}
-		
-		if ($current < '1.0')
-		{
-			// Update to version 1.0
 		}
 		
 		$this->EE->db->where('class', __CLASS__);
@@ -186,8 +190,8 @@ class Registration_codes_ext
 		$this->EE->db->where('class', __CLASS__);
 		$this->EE->db->delete('extensions');
 		
-		// drop the table
-		$this->EE->load->dbforge() ;
+		// drop the table if it exists
+		$this->EE->load->dbforge();
 		$this->EE->dbforge->drop_table('rogee_registration_codes');
 		
 		// log
@@ -209,13 +213,12 @@ class Registration_codes_ext
 	function settings_form($current)
 	{
 	
-		// helpers
+		$this->debug("settings form start");
+	
 		$this->EE->load->helper('form');
 		$this->EE->load->library('table');
 		
 		$vars = array();
-		
-		$this->debug("Registration Codes settings form start");
 
 		// -------------------------------------------------
 		// yes/no values
@@ -230,17 +233,13 @@ class Registration_codes_ext
 		// GENERAL SETTINGS form fields
 		// -------------------------------------------------
 		
-		$replace_captcha_value = isset($current['replace_captcha']) ? $current['replace_captcha'] : 'no'; 
+		// $replace_captcha_value = isset($current['replace_captcha']) ? $current['replace_captcha'] : 'no'; 
 		
 		$require_valid_code_value = isset($current['require_valid_code']) ? $current['require_valid_code'] : 'no';
 		
 		$enable_multi_site_value = isset($current['enable_multi_site']) ? $current['enable_multi_site'] : 'no';
 		
 		$vars['general_settings_fields'] = array(
-			'replace_captcha' => form_dropdown(
-				'replace_captcha',
-				$options_yes_no,
-				$replace_captcha_value),
 			'require_valid_code' => form_dropdown(
 				'require_valid_code',
 				$options_yes_no, 
@@ -265,7 +264,7 @@ class Registration_codes_ext
 		// member groups values
 		// -------------------------------------------------
 		
-		// get group IDs and names from DB, assemble options array
+		// Get group IDs and names from DB, assemble options array.
 		
 		$this->EE->db->select('group_id, site_id, group_title');
 		// $this->EE->db->where('site_id', $this->EE->config->item('site_id'));
@@ -282,7 +281,7 @@ class Registration_codes_ext
 		// sites values
 		// -------------------------------------------------
 
-		// get label for [this site] from DB, assemble options array
+		// Get label for [this site] from DB, assemble options array.
 				
 		$this->EE->db->select('site_id, site_label');
 		$this->EE->db->where('site_id', $this->EE->config->item('site_id'));
@@ -299,10 +298,11 @@ class Registration_codes_ext
 		// registration codes values
 		// -------------------------------------------------
 
-		// load codes for [this site] and [all sites]
+		// Load codes for [this site] and [all sites].
 		$this->EE->db->select('code_id, site_id, code_string, destination_group');
 		$this->EE->db->where('site_id', $this->EE->config->item('site_id'));
 		$this->EE->db->or_where('site_id', "0");
+		$this->EE->db->order_by('code_string', 'asc');
 		$query = $this->EE->db->get('rogee_registration_codes');
 		
 		$vars['codes_data'] = array();
@@ -323,20 +323,20 @@ class Registration_codes_ext
 		
 		$vars['codes_fields'] = array();
 		
-		$show_multi_site_field = (isset($current['enable_multi_site']) && $this->EE->config->item('multiple_sites_enabled') == 'y') ? $current['enable_multi_site'] : 'no';
+		$vars['show_multi_site_field'] = (isset($current['enable_multi_site']) && $this->EE->config->item('multiple_sites_enabled') == 'y') ? $current['enable_multi_site'] : 'no';
 		
 		// Generate fields for existing codes...
 		
 		foreach ($vars['codes_data'] as $key => $data)
 		{
 			
-			// Set backup values (We should never need these, but just in case...)
+			// Setting backup values (We should never need these, but just in case...)
 			
 			$code_string_value = isset($data['code_string']) ? $data['code_string'] : "";
 			$destination_group_value = isset($data['destination_group']) ? $data['destination_group'] : 0;
 			$site_id_value = isset($data['site_id']) ? $data['site_id'] : 0;
 			
-			// Assemble form fields
+			// Assembling form fields
 						
 			$vars['codes_fields'][$key] = array(
 				'code_string' => form_input('code_string_'.$key, $code_string_value),
@@ -349,7 +349,7 @@ class Registration_codes_ext
 			// If multi-site is enabled, show me a drop-down.
 			// If not, just show me the [immutable] info.
 			
-			if ($show_multi_site_field == 'yes')
+			if ($vars['show_multi_site_field'] == 'yes')
 			{
 			
 				$vars['codes_fields'][$key]['site_id'] = form_dropdown(
@@ -359,7 +359,7 @@ class Registration_codes_ext
 			
 			} else {
 			
-				$vars['codes_fields'][$key]['site_id'] = $options_sites[$site_id_value].form_hidden('site_id_'.$key, $site_id_value);
+				$vars['codes_fields'][$key]['site_id'] = "-".form_hidden('site_id_'.$key, $site_id_value);
 			
 			}
 			
@@ -367,13 +367,13 @@ class Registration_codes_ext
 		
 		// Generate fields for a new code...
 		
-		// Set default values
+		// Seting default values
 		
 		$code_string_value = "";
 		$destination_group_value = 0;
-		$site_id_value = ($show_multi_site_field == 'yes') ? 0 : $this->EE->config->item('site_id');
+		$site_id_value = ($vars['show_multi_site_field'] == 'yes') ? 0 : $this->EE->config->item('site_id');
 		
-		// Assemble form fields
+		// Assembling form fields
 					
 		$vars['codes_fields']['new'] = array(
 			'code_string' => form_input('code_string_new', $code_string_value),
@@ -386,7 +386,7 @@ class Registration_codes_ext
 		// If multi-site is enabled, show me a drop-down.
 		// If not, just show me the [immutable] info.
 		
-		if ($show_multi_site_field == 'yes')
+		if ($vars['show_multi_site_field'] == 'yes')
 		{
 		
 			$vars['codes_fields']['new']['site_id'] = form_dropdown(
@@ -396,13 +396,15 @@ class Registration_codes_ext
 		
 		} else {
 		
-			$vars['codes_fields']['new']['site_id'] = $options_sites[$site_id_value].form_hidden('site_id_new', $site_id_value);
+			$vars['codes_fields']['new']['site_id'] = "(This site)".form_hidden('site_id_new', $site_id_value);
 		
 		}
 		
 		// -------------------------------------------------
 		// All done. Go go gadget view file!
 		// -------------------------------------------------
+		
+		$this->debug("settings form end");
 		
 		return $this->EE->load->view('index', $vars, TRUE);			
 	
@@ -422,38 +424,138 @@ class Registration_codes_ext
 	 */
 	function save_settings()
 	{
+
+		$this->debug("saving settings...");
+
+		$this->EE->lang->loadfile('registration_codes');
+				
+		// -------------------------------------------------
+		// Make sure I'm a legit CP form submission.
+		// -------------------------------------------------
 	
 		if (empty($_POST))
 		{
 			show_error($this->EE->lang->line('unauthorized_access'));
 		}
-		
-		unset($_POST['submit']);
-	
-		$this->EE->lang->loadfile('registration_codes');
-	
-		/*
-		
-		$len = $this->EE->input->post('max_link_length');
-		
-		if ( ! is_numeric($len) OR $len <= 0)
+
+		// -------------------------------------------------
+		// Make a list of codes in $_POST array.
+		// -------------------------------------------------
+
+		$todo_list = array();
+
+		foreach ($_POST as $key => $val)
 		{
-			$this->EE->session->set_flashdata(
-					'message_failure', 
-					sprintf($this->EE->lang->line('max_link_length_range'),
-						$len)
-			);
-			$this->EE->functions->redirect(
-				BASE.AMP.'C=addons_extensions'.AMP.'M=extension_settings'.AMP.'file=registration_codes'
+			if (strpos($key, "code_string_") !== false)
+			{
+				$id = str_ireplace("code_string_", "", $key);  
+				$todo_list[$id] = $id;
+			}
+		}
+
+		// -------------------------------------------------
+		// Get registration codes data, for comparison to $_POST data.
+		// -------------------------------------------------
+
+		// loading codes for [this site] and [all sites]
+		$this->EE->db->select('code_id, site_id, code_string, destination_group');
+		$this->EE->db->where('site_id', $this->EE->config->item('site_id'));
+		$this->EE->db->or_where('site_id', "0");
+		$query = $this->EE->db->get('rogee_registration_codes');
+		
+		$codes_data = array();
+		
+		foreach ($query->result_array() as $row)
+		{
+			$codes_data[$row['code_id']] = array(
+				'code_id' => $row['code_id'],
+				'site_id' => $row['site_id'],
+				'code_string' => $row['code_string'],
+				'destination_group' => $row['destination_group']
 			);
 		}
+
+		// -------------------------------------------------
+		// Identify changed records and enter new info into DB.
+		// -------------------------------------------------
 		
-		*/
+		foreach ($todo_list as $key => $row)
+		{
 		
-		$this->debug(serialize($_POST));
+			if (is_numeric($row) && $this->EE->input->post('code_string_'.$row) != "") {
+			
+				// If a code changed (but is still defined), update the record.
+				
+				$need_to_update = FALSE;
+				$new_data = array();
+				
+				if ($codes_data[$row]['code_string'] != $this->EE->input->post('code_string_'.$row))
+				{
+					$new_data['code_string'] = $this->EE->input->post('code_string_'.$row, TRUE);
+					$need_to_update = TRUE;
+				}
+				
+				if ($codes_data[$row]['destination_group'] != $this->EE->input->post('destination_group_'.$row))
+				{
+					$new_data['destination_group'] = $this->EE->input->post('destination_group_'.$row);
+					$need_to_update = TRUE;
+				}
+				
+				if ($codes_data[$row]['site_id'] != $this->EE->input->post('site_id_'.$row))
+				{
+					$new_data['site_id'] = $this->EE->input->post('site_id_'.$row);
+					$need_to_update = TRUE;
+				}
+				
+				if ($need_to_update)
+				{
+					$this->EE->db->set($new_data);
+					$this->EE->db->where('code_id', $row);
+					$this->EE->db->update('rogee_registration_codes'); 
+				}
+				
+				$this->debug(($need_to_update ? "updating row $row - ".serialize($new_data) : "no need to update row $row"));
+
+			}
+			elseif (is_numeric($row) && $this->EE->input->post('code_string_'.$row) === "")
+			{
+				
+				// If a code was erased, delete the record.
+				
+				$this->EE->db->where('code_id', $row);
+				$this->EE->db->delete('rogee_registration_codes'); 
+				
+			}
+			elseif ($row == "new" && $this->EE->input->post('code_string_'.$row) != "")
+			{
+				
+				// If there's a new code, insert a new record.
+				
+				$new_code_string = $this->EE->input->post('code_string_'.$row, TRUE);
+				$new_destination_group = $this->EE->input->post('destination_group_'.$row);
+				$new_site_id = $this->EE->input->post('site_id_'.$row);
+				
+				$new_data = array(
+					'code_string' => $new_code_string,
+					'destination_group' =>
+						((is_numeric($new_destination_group) && ($new_destination_group >= 0)) ? $new_destination_group : 0 ),
+					'site_id' =>
+						((is_numeric($new_site_id) && ($new_site_id >= 0)) ? $new_site_id : 0)
+				);
+				
+				$this->EE->db->set($new_data);
+				$this->EE->db->insert('rogee_registration_codes');
+				
+			}
+			
+		}
+
+		// -------------------------------------------------
+		// Serialize and save General Preferences.
+		// -------------------------------------------------
 		
 		$new_settings = array(
-			'replace_captcha' => $this->EE->input->post('replace_captcha'),
+			// 'replace_captcha' => $this->EE->input->post('replace_captcha'),
 			'require_valid_code' => $this->EE->input->post('require_valid_code'),
 			'enable_multi_site' => $this->EE->input->post('enable_multi_site')
 		);
@@ -461,10 +563,31 @@ class Registration_codes_ext
 		$this->EE->db->where('class', __CLASS__);
 		$this->EE->db->update('extensions', array('settings' => serialize($new_settings)));
 		
-		$this->EE->session->set_flashdata(
-			'message_success',
-		 	$this->EE->lang->line('preferences_updated')
-		);
+		// -------------------------------------------------
+		// Set success message & redirct to main CP or back to EXT CP.
+		// -------------------------------------------------
+		
+		if (isset($_POST['submit']) && ! isset($_POST['submit_finished']))
+		{
+		    
+		    $this->EE->session->set_flashdata(
+		    	'message_success',
+		     	$this->EE->lang->line('preferences_updated')
+		    );
+		    $this->EE->functions->redirect(
+		    	BASE.AMP.'C=addons_extensions'.AMP.'M=extension_settings'.AMP.'file=registration_codes'
+		    );
+		    
+		}
+		else
+		{
+	
+			$this->EE->session->set_flashdata(
+				'message_success',
+			 	$this->EE->lang->line('preferences_updated')
+			);
+		
+		}
 		
 	} // END save_settings()
 
@@ -475,21 +598,22 @@ class Registration_codes_ext
 	 * Debug
 	 * -------------------------
 	 *
-	 * This method places a string into my debug log. For developemnt only.
+	 * This method places a string into my debug log. For developemnt purposes.
 	 *
 	 * @return void
 	 */
 	function debug($debug_statement = "")
 	{
+		
 		if ($this->dev_on)
 		{
 			
 			if (! $this->EE->db->table_exists('rogee_debug_log'))
 			{
-				$this->EE->load->dbforge() ;
+				$this->EE->load->dbforge();
 				$this->EE->dbforge->add_field(array(
 					'event_id'    => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'auto_increment' => TRUE),
-					'class'    => array('type' => 'VARCHAR', 'constraint' => 100),
+					'class'    => array('type' => 'VARCHAR', 'constraint' => 50),
 					'event'   => array('type' => 'VARCHAR', 'constraint' => 200),
 					'timestamp'  => array('type' => 'int', 'constraint' => 20, 'unsigned' => TRUE)
 				));
@@ -502,7 +626,7 @@ class Registration_codes_ext
 			$this->EE->db->insert('rogee_debug_log');
 		}
 		
-		return $debug_statement ;
+		return $debug_statement;
 		
 	} // END debug()
 	
