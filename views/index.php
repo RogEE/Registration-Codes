@@ -36,17 +36,17 @@ if (count($codes_fields) > 1)
 {
 	// show instructions if there are existing rows
 	$this->table->add_row(
-		array('data' => "", 'style' => 'width:5%;'),
-		array('data' => "<em>To delete a row, leave the text box blank.</em>", 'style' => 'width:30%;'),
-		array('data' => "", 'style' => 'width:30%;'),
-		array('data' => ($show_multi_site_field == 'yes' ? "" : "<em>Enable MSM to use multi-site features.</em>"), 'style' => 'width:35%;')
+		array('data' => lang('rogee_rc_instructions_code_id'), 'style' => 'width:5%;'),
+		array('data' => lang('rogee_rc_instructions_code_string'), 'style' => 'width:30%;'),
+		array('data' => lang('rogee_rc_instructions_destination_group'), 'style' => 'width:30%;'),
+		array('data' => ($show_multi_site_field == 'yes' ? lang('rogee_rc_instructions_site_id_enabled') : lang('rogee_rc_instructions_site_id_disabled')), 'style' => 'width:35%;')
 	);
 }
 
 foreach ($codes_fields as $key => $fields)
 {
 	$this->table->add_row(
-		array('data' => ($key == "new" ? "<em>(new)</em>" : ""), 'style' => 'width:5%;'),
+		array('data' => ($key == "new" ? "<em>".lang('rogee_rc_new')."</em>" : ""), 'style' => 'width:5%;'),
 		array('data' => $fields['code_string'], 'style' => 'width:30%;'),
 		array('data' => $fields['destination_group'], 'style' => 'width:30%;'),
 		array('data' => $fields['site_id'], 'style' => 'width:35%;')
