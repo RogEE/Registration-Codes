@@ -580,27 +580,51 @@ class Registration_codes_ext
 		}
 
 		// -------------------------------------------------
-		// Serialize and save General Preferences.
+		// Sanitize, serialize and save General Preferences.
 		// -------------------------------------------------
+		
+		$form_field_input = $this->EE->input->post('form_field', TRUE);
 		
 		$new_settings = array(
 			// -- FUTURE: -- // 'replace_captcha' => $this->EE->input->post('replace_captcha'),
 			'require_valid_code' => $this->EE->input->post('require_valid_code'),
-			'form_field' => $this->EE->input->post('form_field', TRUE),
-			'enable_multi_site' => $this->EE->input->post('enable_multi_site'),
+			'enable_multi_site' => $this->EE->input->post('enable_multi_site')
 		);
+		
+		if ($form_field_input != "")
+		{
+			$new_settings['form_field'] = $this->clean_string($form_field_input);
+		}
+		
+		$form_field_error = FALSE;
+		
+		if ($form_field_input != $new_settings['form_field'])
+		{
+			$form_field_error = TRUE;
+		}
 		
 		$this->EE->db->where('class', __CLASS__);
 		$this->EE->db->update('extensions', array('settings' => serialize($new_settings)));
 		
 		// -------------------------------------------------
-		// Set success message & redirct to main CP or back to EXT CP.
+		// Set error/success messages & redirct to main CP or back to EXT CP.
 		// -------------------------------------------------
 		
+		$error_string = "";
+		
 		if (count($duplicate_codes) > 0) {
+			$error_string .= $this->EE->lang->line('rogee_rc_found_duplicates_error').implode(", ", $duplicate_codes)." ";			
+		}
+		if ($form_field_error)
+		{
+			$error_string .= $this->EE->lang->line('rogee_rc_form_field_error');
+		}
+		
+		if ($error_string != "")
+		{
 			$this->EE->session->set_flashdata(
 				'message_failure',
-				$this->EE->lang->line('registration_codes_module_name').": ".$this->EE->lang->line('rogee_rc_found_duplicates_error').implode(", ", $duplicate_codes)
+				$this->EE->lang->line('registration_codes_module_name').": ".$error_string
 			);
 		}
 		else
@@ -748,6 +772,29 @@ class Registration_codes_ext
 		}
 				
 	} // END execute_registration_code()
+
+
+
+	/**
+	 * -------------------------
+	 * Clean string
+	 * -------------------------
+	 *
+	 * Cleans everything except alphanumeric/dash/underscore from the parameter string
+	 * (used to sanitize field name)
+	 *
+	 * @param string: to be sanitized
+	 * @return string: cleaned-up string
+	 * 
+	 * @see http://cubiq.org/the-perfect-php-clean-url-generator
+	 */
+	// setlocale(LC_ALL, 'en_US.UTF8');
+	function clean_string($str) {
+		$clean = preg_replace("/[^a-zA-Z0-9\/_| -]/", '', $str);
+		$clean = trim($clean, '-');
+		$clean = preg_replace("/[\/| _]+/", '_', $clean);
+		return $clean;
+	}
 
 
 
