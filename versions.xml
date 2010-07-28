@@ -18,5 +18,21 @@
 			</description>
 			<enclosure url="http://bitbucket.org/rogee/registration_codes/get/tip.zip" type="application/zip" />
 		</item>
+		<item>
+			<title>Version 1.0</title>
+			<!-- Additional tag required for NSM Addon Updater -->
+			<ee_addon:version>1.0.0</ee_addon:version>
+			<link>http://michaelrog.com/go/ee/</link>
+			<pubDate>Wed, 28 July 2010 07:07:00 +0000</pubDate>
+			<description><![CDATA[
+				<ul>
+					<li>First release!</li>
+					<li>Supports <a href="http://expressionengine-addons.com/nsm-addon-updater">NSM Addon Updater</a> and EE MSM.</li>
+					<li>Releasing in "open beta" status -- please email me if you come across any bugs or behavioral inconsistencies!</li>
+				</ul>
+		    ]]>
+			</description>
+			<enclosure url="http://bitbucket.org/rogee/registration_codes/get/1.0.zip" type="application/zip" />
+		</item>		
 	</channel>
 </rss>
