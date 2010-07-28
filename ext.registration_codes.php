@@ -61,7 +61,7 @@ class Registration_codes_ext
 			$settings = array(
 				// -- FUTURE: -- // 'replace_captcha' => 'no',	
 				'require_valid_code' => 'no',
-				'enable_multi_site' => 'no',
+				// -- REMOVED: -- / 'enable_multi_site' => 'no',
 				'form_field' => "registration_code"
 			);
 		}
@@ -240,7 +240,7 @@ class Registration_codes_ext
 		$form_field_value = isset($current['form_field']) ? $current['form_field'] : "registration_code";
 		// -- FUTURE: -- // $replace_captcha_value = isset($current['replace_captcha']) ? $current['replace_captcha'] : 'no'; 
 		$require_valid_code_value = isset($current['require_valid_code']) ? $current['require_valid_code'] : 'no';
-		$enable_multi_site_value = isset($current['enable_multi_site']) ? $current['enable_multi_site'] : 'no';
+		// -- REMOVED: -- // $enable_multi_site_value = isset($current['enable_multi_site']) ? $current['enable_multi_site'] : 'no';
 		
 		// Assemble the form fields.
 		
@@ -251,7 +251,8 @@ class Registration_codes_ext
 				$options_yes_no, 
 				$require_valid_code_value)
 			);
-			
+		
+		/* // -- REMOVED: -- // 	
 		if ($this->EE->config->item('multiple_sites_enabled') == 'y')
 		{
 			
@@ -265,6 +266,7 @@ class Registration_codes_ext
 			$vars['general_settings_fields']['enable_multi_site'] = "<strong>".lang($enable_multi_site_value)."</strong> ".lang('rogee_rc_instructions_enable_msm').form_hidden('enable_multi_site', $enable_multi_site_value);
 		
 		}
+		*/
 
 		// -------------------------------------------------
 		// member groups values
@@ -329,7 +331,7 @@ class Registration_codes_ext
 		
 		$vars['codes_fields'] = array();
 		
-		$vars['show_multi_site_field'] = (isset($current['enable_multi_site']) && $this->EE->config->item('multiple_sites_enabled') == 'y') ? $current['enable_multi_site'] : 'no';
+		$vars['show_multi_site_field'] = ($this->EE->config->item('multiple_sites_enabled') == 'y') ? 'yes' : 'no';
 		
 		// Generate fields for existing codes...
 		
@@ -588,19 +590,21 @@ class Registration_codes_ext
 		$new_settings = array(
 			// -- FUTURE: -- // 'replace_captcha' => $this->EE->input->post('replace_captcha'),
 			'require_valid_code' => $this->EE->input->post('require_valid_code'),
-			'enable_multi_site' => $this->EE->input->post('enable_multi_site')
+			// -- REMOVED: -- // 'enable_multi_site' => $this->EE->input->post('enable_multi_site')
 		);
-		
-		if ($form_field_input != "")
-		{
-			$new_settings['form_field'] = $this->clean_string($form_field_input);
-		}
 		
 		$form_field_error = FALSE;
 		
-		if ($form_field_input != $new_settings['form_field'])
+		if ($form_field_input != "")
 		{
-			$form_field_error = TRUE;
+		
+			$new_settings['form_field'] = $this->clean_string($form_field_input);
+			
+			if ($form_field_input != $new_settings['form_field'])
+			{
+				$form_field_error = TRUE;
+			}
+			
 		}
 		
 		$this->EE->db->where('class', __CLASS__);
@@ -612,12 +616,12 @@ class Registration_codes_ext
 		
 		$error_string = "";
 		
-		if (count($duplicate_codes) > 0) {
-			$error_string .= $this->EE->lang->line('rogee_rc_found_duplicates_error').implode(", ", $duplicate_codes)." ";			
-		}
 		if ($form_field_error)
 		{
-			$error_string .= $this->EE->lang->line('rogee_rc_form_field_error');
+			$error_string .= $this->EE->lang->line('rogee_rc_form_field_error')." ";
+		}
+		if (count($duplicate_codes) > 0) {
+			$error_string .= $this->EE->lang->line('rogee_rc_found_duplicates_error').implode(", ", $duplicate_codes);			
 		}
 		
 		if ($error_string != "")
@@ -725,9 +729,6 @@ class Registration_codes_ext
 	 */
 	function execute_registration_code($data, $member_id)
 	{
-		
-		$this->debug("new member: $member_id");
-		$this->debug(serialize($data));	
 
 		$field_name = (isset($current['field_name'])) ? $current['field_name'] : "registration_code";
 		$submitted_code = $this->EE->input->post($field_name, TRUE);
@@ -788,7 +789,6 @@ class Registration_codes_ext
 	 * 
 	 * @see http://cubiq.org/the-perfect-php-clean-url-generator
 	 */
-	// setlocale(LC_ALL, 'en_US.UTF8');
 	function clean_string($str) {
 		$clean = preg_replace("/[^a-zA-Z0-9\/_| -]/", '', $str);
 		$clean = trim($clean, '-');
@@ -834,7 +834,7 @@ class Registration_codes_ext
 		return $debug_statement;
 		
 	} // END debug()
-
+	
 
 } // END CLASS
 
