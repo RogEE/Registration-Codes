@@ -7,7 +7,7 @@ $lang = array(
 //----------------------------------------
 
 "registration_codes_module_name" =>
-"Registration Codes (RogEE)",
+"Registration Codes",
 
 "registration_codes_module_description" =>
 "Automatically places new members into specified groups according to registration codes.",
@@ -17,15 +17,14 @@ $lang = array(
 'rogee_rc_language' => 'RogEE Registration Codes speaks English!',
 
 'rogee_rc_general_preferences' => 'General Preferences',
-// -- FUTURE: -- // 'rogee_rc_replace_captcha' => 'Replace the default CAPTCHA field?',
+// -- FUTURE: -- // 'rogee_rc_replace_captcha' => 'Replace default CAPTCHA in member registration form?',
 'rogee_rc_require_valid_code' => 'Require valid code to register?',
-'rogee_rc_enable_multi_site' => 'Enable multi-site codes?',
 'rogee_rc_form_field' => 'Form field [name]',
 'rogee_rc_instructions_enable_msm' => "<em>Enable MSM to use multi-site features.</em>",
 
 'rogee_rc_registration_codes' => 'Registration Codes',
 'rogee_rc_destination_group' => 'Destination group',
-'rogee_rc_code_string' => 'Code / passphrase',
+'rogee_rc_code_string' => 'Code / value',
 'rogee_rc_site_id' => 'Site',
 
 'rogee_rc_new' => '(new)',

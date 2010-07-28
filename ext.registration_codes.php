@@ -1,4 +1,4 @@
-<?php  
+<?php
 
 /*
 =====================================================
@@ -6,40 +6,54 @@
 RogEE "Registration Codes"
 an extension for ExpressionEngine 2
 by Michael Rog
-v0.1
+v1.0
 
 email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
 
 This extension is compatible with NSM Addon Updater:
->> http://github.com/newism/nsm.addon_updater.ee_addon
+>> http://expressionengine-addons.com/nsm-addon-updater
 
 Changelog:
 0.1 - dev
+1.0 - initial release!
 
 =====================================================
 
 */
 
-if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+if (!defined('APP_VER') || !defined('BASEPATH')) { exit('No direct script access allowed'); }
 
 // -----------------------------------------
 //	Here goes nothin...
 // -----------------------------------------
 
+if (! defined('ROGEE_RC_VERSION'))
+{
+	// get the version from config.php
+	require PATH_THIRD.'registration_codes/config.php';
+	define('ROGEE_RC_VERSION', $config['version']);
+}
+
+/**
+ * Registration Codes class, for ExpressionEngine 2
+ *
+ * @package   RogEE Registration Codes
+ * @author    Michael Rog <michael@michaelrog.com>
+ * @copyright Copyright (c) 2010 Michael Rog
+ */
 class Registration_codes_ext
 {
 
 	var $settings = array();
     	
 	var $name = "RogEE Registration Codes" ;
-	var $version = "0.1.0" ;
+	var $version = ROGEE_RC_VERSION ;
 	var $description = "Automatically places new members into pre-specified groups according to registration codes." ;
 	var $settings_exist = "y" ;
 	var $docs_url = "http//michaelrog.com/go/ee" ;
 
 	var $dev_on	= TRUE ;
-	
 	
 	
 	/**
@@ -92,8 +106,6 @@ class Registration_codes_ext
 	 */
 	function activate_extension()
 	{
-		
-		$this->debug("activate_extension -- this.settings -- ".serialize($this->settings));
 		
 		// Register the hook.
 		
@@ -193,10 +205,6 @@ class Registration_codes_ext
 		$this->EE->db->where('class', __CLASS__);
 		$this->EE->db->delete('extensions');
 		
-		// clear dev log
-		$this->EE->db->where('class', __CLASS__);
-		$this->EE->db->delete('rogee_debug_log');
-		
 		// drop the table if it exists
 		$this->EE->load->dbforge();
 		$this->EE->dbforge->drop_table('rogee_registration_codes');
@@ -219,9 +227,6 @@ class Registration_codes_ext
 	 */
 	function settings_form($current)
 	{
-	
-		$this->debug("settings_form -- current -- ".serialize($current));
-		$this->debug("settings_form -- this.settings -- ".serialize($this->settings));
 		
 		$this->EE->load->helper('form');
 		$this->EE->load->library('table');
@@ -265,7 +270,7 @@ class Registration_codes_ext
 		// Get group IDs and names from DB, assemble options array.
 		
 		$this->EE->db->select('group_id, site_id, group_title');
-		// $this->EE->db->where('site_id', $this->EE->config->item('site_id'));
+		$this->EE->db->where('site_id', $this->EE->config->item('site_id'));
 		$query = $this->EE->db->get('member_groups');
 		
 		$options_groups = array(0 => lang('rogee_rc_default_group'));
@@ -420,8 +425,6 @@ class Registration_codes_ext
 	 */
 	function save_settings()
 	{
-
-		$this->debug("save_settings -- this.settings -- ".serialize($this->settings));
 		
 		$this->EE->lang->loadfile('registration_codes');
 				
@@ -646,7 +649,7 @@ class Registration_codes_ext
 	{
 		
 		$this->debug("VALIDATING.");
-		$this->debug("validating. -- this.settings -- ".serialize($this->settings));
+		$this->debug("validating. -- this.settings = ".serialize($this->settings));
 		
 		// We only care about this function if "require_valid_code" is set.
 		
@@ -724,7 +727,7 @@ class Registration_codes_ext
 	{
 
 		$this->debug("REGISTERING.");
-		$this->debug("executing. -- this.settings -- ".serialize($this->settings));
+		$this->debug("registering. -- this.settings = ".serialize($this->settings));
 		
 		$submitted_code = $this->EE->input->post($this->settings['form_field'], TRUE);
 		$match = FALSE ;
@@ -760,9 +763,9 @@ class Registration_codes_ext
 			
 		}		
 		
-		// We only need to move them into the destination group if they aren't there already.
+		// Make the database change only if necessary.
 		
-		if ($match !== FALSE && $data['group_id'] != $destination_groups_list[$match])
+		if ($match !== FALSE && $data['group_id'] != $destination_groups_list[$match] && $destination_groups_list[$match] > 0)
 		{
 			$this->EE->db->where('member_id', $member_id);
 			$this->EE->db->update(
