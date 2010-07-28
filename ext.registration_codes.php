@@ -53,7 +53,7 @@ class Registration_codes_ext
 	var $settings_exist = "y" ;
 	var $docs_url = "http//michaelrog.com/go/ee" ;
 
-	var $dev_on	= TRUE ;
+	var $dev_on	= FALSE ;
 	
 	
 	/**
@@ -648,25 +648,16 @@ class Registration_codes_ext
 	function validate_registration_code()
 	{
 		
-		$this->debug("VALIDATING.");
-		$this->debug("validating. -- this.settings = ".serialize($this->settings));
-		
 		// We only care about this function if "require_valid_code" is set.
 		
 		if ($this->settings['require_valid_code'] != 'yes')
 		{
-			$this->debug("validating. validation not required.");
 			return;
 		}
-		
-		$this->debug("validating. validation required.");
 		
 		// Figure out if there's a code submitted via $_POST.
 		
 		$submitted_code = $this->EE->input->post($this->settings['form_field'], TRUE);
-
-		$this->debug("validating. field: ".$this->settings['form_field']);
-		$this->debug("validating. code: $submitted_code");
 
 		// If there is a code submitted, see if it is valid.
 
@@ -696,7 +687,6 @@ class Registration_codes_ext
 			if (in_array($submitted_code, $codes_list))
 			{
 				$match = TRUE ;
-				$this->debug("verifying. validated: $submitted_code");
 			}
 		
 		}		
@@ -705,7 +695,6 @@ class Registration_codes_ext
 		
 		if (!$match)
 		{
-			$this->debug("verifying. no match! throwing error.");
 			$this->extensions->end_script = TRUE;
 			$error = array($this->EE->lang->line('rogee_rc_no_valid_code'));
 			return $this->EE->output->show_user_error('submission', $error);
@@ -725,15 +714,9 @@ class Registration_codes_ext
 	 */
 	function execute_registration_code($data, $member_id)
 	{
-
-		$this->debug("REGISTERING.");
-		$this->debug("registering. -- this.settings = ".serialize($this->settings));
 		
 		$submitted_code = $this->EE->input->post($this->settings['form_field'], TRUE);
 		$match = FALSE ;
-		
-		$this->debug("registering. code from field: ".$this->settings['form_field']);
-		$this->debug("registering. code: $submitted_code");
 		
 		if ($submitted_code !== FALSE)
 		{
@@ -759,7 +742,6 @@ class Registration_codes_ext
 			// Checking whether the submitted code is on the list
 			
 			$match = array_search($submitted_code, $codes_list);
-			$this->debug("registering. matched code: $match");
 			
 		}		
 		
@@ -772,7 +754,6 @@ class Registration_codes_ext
 				'members', 
 				array('group_id' => $destination_groups_list[$match])
 			);
-			$this->debug("registering. member $member_id moved to $destination_groups_list[$match].");
 		}
 				
 	} // END execute_registration_code()
