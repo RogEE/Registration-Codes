@@ -45,7 +45,7 @@ $lang = array(
 'rogee_rc_found_duplicates_error' => "Some registration codes could not be saved, because duplicate codes are not allowed. The following duplicates were found in the submission: ",
 'rogee_rc_form_field_error' => "Some invalid characters were removed from the Form field name setting. (Only alphanumeric characters, dashes, and underscores are allowed in form field names.)",
 
-'rogee_rc_no_valid_code' => "You must provide a valid registration code to complete your registration. (note: Registration codes are case-sensitive.)",
+'rogee_rc_no_valid_code' => "You must provide a valid registration code to complete your registration. (note: Registration codes, like passwords, are case-sensitive.)",
 
 // END
 ''=>''

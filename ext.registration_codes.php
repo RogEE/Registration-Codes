@@ -56,14 +56,16 @@ class Registration_codes_ext
 		
 		// default settings
 		
-		if ($settings == '')
+		if (!is_array($settings))
 		{
-			$settings = array(
-				// -- FUTURE: -- // 'replace_captcha' => 'no',	
-				'require_valid_code' => 'no',
-				// -- REMOVED: -- / 'enable_multi_site' => 'no',
-				'form_field' => "registration_code"
-			);
+			$settings = array();
+		}
+		if (!isset($settings['require_valid_code'])){
+			$settings['require_valid_code'] = 'no';
+		}
+		if (!isset($settings['form_field']))
+		{
+			$settings['form_field'] = "registration_code";
 		}
 		
 		$this->settings = $settings;
@@ -91,6 +93,8 @@ class Registration_codes_ext
 	function activate_extension()
 	{
 		
+		$this->debug("activate_extension -- this.settings -- ".serialize($this->settings));
+		
 		// Register the hook.
 		
 		$hook = array(
@@ -98,7 +102,7 @@ class Registration_codes_ext
 			'method'	=> 'execute_registration_code',
 			'hook'		=> 'member_member_register',
 			'settings'	=> serialize($this->settings),
-			'priority'	=> 3,
+			'priority'	=> 5,
 			'version'	=> $this->version,
 			'enabled'	=> 'y'
 		);
@@ -110,7 +114,7 @@ class Registration_codes_ext
 			'method'	=> 'validate_registration_code',
 			'hook'		=> 'member_member_register_start',
 			'settings'	=> serialize($this->settings),
-			'priority'	=> 3,
+			'priority'	=> 2,
 			'version'	=> $this->version,
 			'enabled'	=> 'y'
 		);
@@ -135,7 +139,7 @@ class Registration_codes_ext
 		}		
 		
 		// log		
-		$this->debug("Registration Codes EXT activated: version $this->version");
+		$this->debug("Registration Codes extension activated: version $this->version");
 		
 	} // END activate_extension()
 	
@@ -166,8 +170,6 @@ class Registration_codes_ext
 					'extensions', 
 					array('version' => $this->version)
 		);
-		
-		$this->debug("Registration Codes EXT updated to version $this->version");
 	
 	} // END update_extension()
 	
@@ -191,12 +193,16 @@ class Registration_codes_ext
 		$this->EE->db->where('class', __CLASS__);
 		$this->EE->db->delete('extensions');
 		
+		// clear dev log
+		$this->EE->db->where('class', __CLASS__);
+		$this->EE->db->delete('rogee_debug_log');
+		
 		// drop the table if it exists
 		$this->EE->load->dbforge();
 		$this->EE->dbforge->drop_table('rogee_registration_codes');
 		
 		// log
-		$this->debug("Registration Codes EXT disabled.");
+		$this->debug("Registration Codes extension disabled.");
 	
 	} // END disable_extension()
 
@@ -214,8 +220,9 @@ class Registration_codes_ext
 	function settings_form($current)
 	{
 	
-		$this->debug("settings form start");
-	
+		$this->debug("settings_form -- current -- ".serialize($current));
+		$this->debug("settings_form -- this.settings -- ".serialize($this->settings));
+		
 		$this->EE->load->helper('form');
 		$this->EE->load->library('table');
 		$this->EE->load->helper('language');
@@ -237,10 +244,9 @@ class Registration_codes_ext
 		
 		// Default values (We shouldn't ever need these, but just in case...)
 		
-		$form_field_value = isset($current['form_field']) ? $current['form_field'] : "registration_code";
+		$form_field_value = isset($current['form_field']) ? $current['form_field'] : $this->settings['form_field'];
 		// -- FUTURE: -- // $replace_captcha_value = isset($current['replace_captcha']) ? $current['replace_captcha'] : 'no'; 
-		$require_valid_code_value = isset($current['require_valid_code']) ? $current['require_valid_code'] : 'no';
-		// -- REMOVED: -- // $enable_multi_site_value = isset($current['enable_multi_site']) ? $current['enable_multi_site'] : 'no';
+		$require_valid_code_value = isset($current['require_valid_code']) ? $current['require_valid_code'] : $this->settings['require_valid_code'];
 		
 		// Assemble the form fields.
 		
@@ -251,22 +257,6 @@ class Registration_codes_ext
 				$options_yes_no, 
 				$require_valid_code_value)
 			);
-		
-		/* // -- REMOVED: -- // 	
-		if ($this->EE->config->item('multiple_sites_enabled') == 'y')
-		{
-			
-			$vars['general_settings_fields']['enable_multi_site'] = form_dropdown(
-				'enable_multi_site',
-				$options_yes_no, 
-				$enable_multi_site_value);
-				
-		} else {
-		
-			$vars['general_settings_fields']['enable_multi_site'] = "<strong>".lang($enable_multi_site_value)."</strong> ".lang('rogee_rc_instructions_enable_msm').form_hidden('enable_multi_site', $enable_multi_site_value);
-		
-		}
-		*/
 
 		// -------------------------------------------------
 		// member groups values
@@ -412,8 +402,6 @@ class Registration_codes_ext
 		// All done. Go go gadget view file!
 		// -------------------------------------------------
 		
-		$this->debug("settings form end");
-		
 		return $this->EE->load->view('index', $vars, TRUE);			
 	
 	} // END settings_form()
@@ -433,8 +421,8 @@ class Registration_codes_ext
 	function save_settings()
 	{
 
-		$this->debug("saving settings...");
-
+		$this->debug("save_settings -- this.settings -- ".serialize($this->settings));
+		
 		$this->EE->lang->loadfile('registration_codes');
 				
 		// -------------------------------------------------
@@ -533,8 +521,6 @@ class Registration_codes_ext
 					$this->EE->db->where('code_id', $row);
 					$this->EE->db->update('rogee_registration_codes'); 
 				}
-				
-				$this->debug(($need_to_update ? "updating row $row - ".serialize($new_data) : "no need to update row $row"));
 
 			}
 			elseif (is_numeric($row) && $val === "")
@@ -544,8 +530,6 @@ class Registration_codes_ext
 				
 				$this->EE->db->where('code_id', $row);
 				$this->EE->db->delete('rogee_registration_codes');
-				
-				$this->debug("deleted row $row");
 				
 			}
 			elseif ($row == "new" && $val != "")
@@ -589,8 +573,7 @@ class Registration_codes_ext
 		
 		$new_settings = array(
 			// -- FUTURE: -- // 'replace_captcha' => $this->EE->input->post('replace_captcha'),
-			'require_valid_code' => $this->EE->input->post('require_valid_code'),
-			// -- REMOVED: -- // 'enable_multi_site' => $this->EE->input->post('enable_multi_site')
+			'require_valid_code' => $this->EE->input->post('require_valid_code')
 		);
 		
 		$form_field_error = FALSE;
@@ -662,17 +645,25 @@ class Registration_codes_ext
 	function validate_registration_code()
 	{
 		
+		$this->debug("VALIDATING.");
+		$this->debug("validating. -- this.settings -- ".serialize($this->settings));
+		
 		// We only care about this function if "require_valid_code" is set.
 		
-		if (!isset($current['require_valid_code']) || $current['require_valid_code'] != 'yes')
+		if ($this->settings['require_valid_code'] != 'yes')
 		{
+			$this->debug("validating. validation not required.");
 			return;
 		}
 		
+		$this->debug("validating. validation required.");
+		
 		// Figure out if there's a code submitted via $_POST.
 		
-		$field_name = (isset($current['field_name'])) ? $current['field_name'] : "registration_code";		
-		$submitted_code = $this->EE->input->post($field_name, TRUE);
+		$submitted_code = $this->EE->input->post($this->settings['form_field'], TRUE);
+
+		$this->debug("validating. field: ".$this->settings['form_field']);
+		$this->debug("validating. code: $submitted_code");
 
 		// If there is a code submitted, see if it is valid.
 
@@ -702,6 +693,7 @@ class Registration_codes_ext
 			if (in_array($submitted_code, $codes_list))
 			{
 				$match = TRUE ;
+				$this->debug("verifying. validated: $submitted_code");
 			}
 		
 		}		
@@ -710,6 +702,7 @@ class Registration_codes_ext
 		
 		if (!$match)
 		{
+			$this->debug("verifying. no match! throwing error.");
 			$this->extensions->end_script = TRUE;
 			$error = array($this->EE->lang->line('rogee_rc_no_valid_code'));
 			return $this->EE->output->show_user_error('submission', $error);
@@ -730,9 +723,14 @@ class Registration_codes_ext
 	function execute_registration_code($data, $member_id)
 	{
 
-		$field_name = (isset($current['field_name'])) ? $current['field_name'] : "registration_code";
-		$submitted_code = $this->EE->input->post($field_name, TRUE);
+		$this->debug("REGISTERING.");
+		$this->debug("executing. -- this.settings -- ".serialize($this->settings));
+		
+		$submitted_code = $this->EE->input->post($this->settings['form_field'], TRUE);
 		$match = FALSE ;
+		
+		$this->debug("registering. code from field: ".$this->settings['form_field']);
+		$this->debug("registering. code: $submitted_code");
 		
 		if ($submitted_code !== FALSE)
 		{
@@ -758,6 +756,7 @@ class Registration_codes_ext
 			// Checking whether the submitted code is on the list
 			
 			$match = array_search($submitted_code, $codes_list);
+			$this->debug("registering. matched code: $match");
 			
 		}		
 		
@@ -770,6 +769,7 @@ class Registration_codes_ext
 				'members', 
 				array('group_id' => $destination_groups_list[$match])
 			);
+			$this->debug("registering. member $member_id moved to $destination_groups_list[$match].");
 		}
 				
 	} // END execute_registration_code()
