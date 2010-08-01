@@ -10,6 +10,7 @@ v1.0
 
 email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
+>> http://michaelrog.com/ee
 
 This extension is compatible with NSM Addon Updater:
 >> http://expressionengine-addons.com/nsm-addon-updater
@@ -51,7 +52,7 @@ class Registration_codes_ext
 	var $version = ROGEE_RC_VERSION ;
 	var $description = "Automatically places new members into pre-specified groups according to registration codes." ;
 	var $settings_exist = "y" ;
-	var $docs_url = "http//michaelrog.com/go/ee" ;
+	var $docs_url = "http//michaelrog.com/ee/registration-codes" ;
 
 	var $dev_on	= FALSE ;
 	
