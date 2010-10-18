@@ -6,7 +6,7 @@
 RogEE "Registration Codes"
 an extension for ExpressionEngine 2
 by Michael Rog
-v1.0
+v1.1.0
 
 email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -18,6 +18,7 @@ This extension is compatible with NSM Addon Updater:
 Changelog:
 0.1 - dev
 1.0 - initial release!
+1.1 - added Solspace User module compatibility
 
 =====================================================
 
@@ -54,7 +55,7 @@ class Registration_codes_ext
 	var $settings_exist = "y" ;
 	var $docs_url = "http//michaelrog.com/ee/registration-codes" ;
 
-	var $dev_on	= FALSE ;
+	var $dev_on	= TRUE ;
 	
 	
 	/**
@@ -108,7 +109,7 @@ class Registration_codes_ext
 	function activate_extension()
 	{
 		
-		// Register the hook.
+		// Register the hooks for EE-side registrations (default EE Member module)
 		
 		$hook = array(
 			'class'		=> __CLASS__,
@@ -126,6 +127,32 @@ class Registration_codes_ext
 			'class'		=> __CLASS__,
 			'method'	=> 'validate_registration_code',
 			'hook'		=> 'member_member_register_start',
+			'settings'	=> serialize($this->settings),
+			'priority'	=> 2,
+			'version'	=> $this->version,
+			'enabled'	=> 'y'
+		);
+		
+		$this->EE->db->insert('extensions', $hook);
+		
+		// Register the hooks for User-side registrations (Solspace User module)
+		
+		$hook = array(
+			'class'		=> __CLASS__,
+			'method'	=> 'execute_registration_code',
+			'hook'		=> 'user_register_end',
+			'settings'	=> serialize($this->settings),
+			'priority'	=> 5,
+			'version'	=> $this->version,
+			'enabled'	=> 'y'
+		);
+		
+		$this->EE->db->insert('extensions', $hook);
+		
+		$hook = array(
+			'class'		=> __CLASS__,
+			'method'	=> 'validate_registration_code',
+			'hook'		=> 'user_register_start',
 			'settings'	=> serialize($this->settings),
 			'priority'	=> 2,
 			'version'	=> $this->version,
@@ -176,6 +203,18 @@ class Registration_codes_ext
 		if ($current == '' OR $current == $this->version)
 		{
 			return FALSE;
+		}
+
+		elseif (version_compare($current, '1.1.0', '<'))
+		{
+	
+			// un-register hooks
+			$this->EE->db->where('class', __CLASS__);
+			$this->EE->db->delete('extensions');
+			
+			// re-register hooks by running activation function
+			$this->activate_extension();
+		
 		}
 		
 		$this->EE->db->where('class', __CLASS__);
@@ -744,11 +783,11 @@ class Registration_codes_ext
 			
 			$match = array_search($submitted_code, $codes_list);
 			
-		}		
+		}
 		
-		// Make the database change only if necessary.
+		// Make the database change if there is a valid match
 		
-		if ($match !== FALSE && $data['group_id'] != $destination_groups_list[$match] && $destination_groups_list[$match] > 0)
+		if ($match !== FALSE && $destination_groups_list[$match] > 0)
 		{
 			$this->EE->db->where('member_id', $member_id);
 			$this->EE->db->update(
