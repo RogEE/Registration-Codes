@@ -53,7 +53,7 @@ class Registration_codes_ext
 	var $settings_exist = "y" ;
 	var $docs_url = "http//michaelrog.com/ee/registration-codes" ;
 
-	var $dev_on	= TRUE ;
+	var $dev_on	= FALSE ;
 	
 	
 	/**
