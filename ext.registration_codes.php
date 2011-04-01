@@ -6,19 +6,17 @@
 RogEE "Registration Codes"
 an extension for ExpressionEngine 2
 by Michael Rog
-v1.1.0
+version 1.2.0
 
 email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
 >> http://michaelrog.com/ee
 
 This extension is compatible with NSM Addon Updater:
->> http://expressionengine-addons.com/nsm-addon-updater
+>> http://ee-garage.com/nsm-addon-updater
 
 Changelog:
-0.1 - dev
-1.0 - initial release!
-1.1 - added Solspace User module compatibility
+>> http://michaelrog.com/ee/versions/registration-codes
 
 =====================================================
 
