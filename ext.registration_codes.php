@@ -6,7 +6,7 @@
 RogEE "Registration Codes"
 an extension for ExpressionEngine 2
 by Michael Rog
-version 1.2.0
+version 1.3.0
 
 email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -814,7 +814,7 @@ class Registration_codes_ext
 	function clean_string($str) {
 		$clean = preg_replace("/[^a-zA-Z0-9\/_| -]/", '', $str);
 		$clean = trim($clean, '-');
-		$clean = preg_replace("/[\/| _]+/", '_', $clean);
+		$clean = preg_replace("/[\/|_]+/", '_', $clean);
 		return $clean;
 	}
 
