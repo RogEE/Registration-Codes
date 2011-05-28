@@ -7,7 +7,7 @@ $lang = array(
 //----------------------------------------
 
 "registration_codes_module_name" =>
-"Registration Codes",
+"RogEE Registration Codes",
 
 "registration_codes_module_description" =>
 "Automatically places new members into specified groups according to registration codes.",
