@@ -18,8 +18,8 @@ Change-log:
 >> http://rog.ee/versions/registration_codes
 
 =====================================================
-
 */
+
 
 if (!defined('EXT')) exit('No direct script access allowed.');
 
@@ -53,6 +53,20 @@ class Registration_codes
 	var $dev_on = TRUE;
 	var $nuke_log_on_uninstall = FALSE;
 
+	// ---------------------------------------------
+	//	MSM prefs
+	// ---------------------------------------------
+	
+	var $msm_enabled;
+	var $this_site_id;
+	
+	// ---------------------------------------------
+	//	etc.
+	// ---------------------------------------------
+	
+	var $member_group_data;
+	var $zebra_class = "";
+		
 
 	/**
 	* ==============================================
@@ -65,7 +79,8 @@ class Registration_codes
     
 	function Registration_codes($settings="")
 	{
-		$this->settings = $settings;
+		$this->settings = $settings;	
+		$this->debug_log("Constructor.");
 	}
 	// END Constructor
     
@@ -89,11 +104,12 @@ class Registration_codes
 		// ---------------------------------------------
 		
 		$settings =	array();
-		$settings['require_valid_code'] = 'no';
+		$settings['require_valid_code'] = 'n';
 		$settings['form_field'] = 'registration_code';
-		$settings['bypass_enabled'] = 'no';
-		$settings['bypass_code'] = 'schfiftyfive';
-		$settings['bypass_form_field'] = 'bypass_code';
+		$settings['bypass_enabled'] = 'n';
+		$settings['bypass_code'] = '';
+		$settings['bypass_form_field'] = '';
+		$this->settings = $settings;
 	
 		// ---------------------------------------------
 		//	Hook data
@@ -139,7 +155,7 @@ class Registration_codes
 				'priority' => 5,
 				'version' => $this->version,
 				'enabled' => 'y'
-			)			
+			)		
 		);
 	
 		// ---------------------------------------------
@@ -209,7 +225,7 @@ class Registration_codes
 		}
 		
 		// ---------------------------------------------
-		//	Not sure why returning TRUE here is the thing to do, but all the cool kids seem to be doing it...
+		//	Not sure why returning TRUE here is the thing to do, but all the cool EE1 kids seem to be doing it...
 		// ---------------------------------------------
 		
 		return TRUE;
@@ -259,151 +275,472 @@ class Registration_codes
 		{
 			$DB->query("DROP TABLE IF EXISTS exp_rogee_debug_log");
 		}
-		
-		
-	
+
 	}	
 	
 	
-	
-function settings_form($current)
-{
-	global $DSP, $LANG, $IN;
-	
-	$DSP->crumbline = TRUE;
-	
-	$DSP->title  = $LANG->line('extension_settings');
-	
-	$DSP->crumb  = $DSP->anchor(BASE.AMP.'C=admin'.AMP.'area=utilities', $LANG->line('utilities')).
-	$DSP->crumb_item(
-		$DSP->anchor(BASE.AMP.'C=admin'.AMP.'M=utilities'.AMP.'P=extensions_manager',
-			$LANG->line('extensions_manager'))
-	);
-	$DSP->crumb .= $DSP->crumb_item($this->name);
-	
-	// Set up the settings form
+	/**
+	* ==============================================
+	* Settings_form
+	* ==============================================
+	*    
+	* Draws the settings form
+	*
+	* @param array: current settings
+	*
+	*/	
+	function settings_form($current)
+	{
 		
-	$DSP->body = $DSP->form_open(
-		array(
-		'action' => 'C=admin'.AMP.'M=utilities'.AMP.'P=save_extension_settings',
-		'name'   => 'rogee_registration_codes_settings',
-		'id'     => 'rogee_registration_codes_settings'
-		),
-		array('name' => get_class($this))
-	);
-
-	// ---------------------------------------------
-	//	General settings
-	// ---------------------------------------------
-
-	// OPEN General Settings table
-
-$DSP->body .=   $DSP->table('', '10', '10', '100%','0');
-	
-	// General settings
-	
-	$DSP->body .=   $DSP->tr();
-	
-	// General settings: Operation
-	
-	$DSP->body .=   $DSP->td('','50%','','','top');
-	
-	$DSP->body .= "<fieldset><legend class=\"defaultBold\">General settings</legend>";
-	
-	$DSP->body .= $DSP->div('itemWrapper')
-              .$DSP->qdiv('itemTitle', "Form field [name]")
-              .$DSP->input_text('form_field', 'CODE_FIELD', '20', '60', 'input', '')
-              .$DSP->div_c();
-              
-	$DSP->body .= $DSP->div('itemWrapper')
-              .$DSP->qdiv('itemTitle', "Require valid code to register?")
-              .$DSP->input_select_header('require_valid_code')
-              .$DSP->input_select_option('y', $LANG->line('yes'))
-              .$DSP->input_select_option('n', $LANG->line('no'))
-              .$DSP->input_select_footer()
-              .$DSP->div_c();
-
-	$DSP->body .= "</fieldset>";
+		global $PREFS, $DB, $DSP, $LANG, $IN;
 		
-	$DSP->body .=   $DSP->td_c();
-	
-	// General settings: Override
-	
-	$DSP->body .=   $DSP->td('','50%','','','top');
-	
-	$DSP->body .= "<fieldset><legend class=\"defaultBold\">Override settings</legend>";
-	
-	$DSP->body .= $DSP->div('itemWrapper')
-              .$DSP->qdiv('itemTitle', "Bypass extension if override code is present?")
-              .$DSP->input_select_header('bypass_enabled')
-              .$DSP->input_select_option('y', $LANG->line('yes'))
-              .$DSP->input_select_option('n', $LANG->line('no'))
-              .$DSP->input_select_footer()
-              .$DSP->div_c();
-
-	$DSP->body .= $DSP->div('itemWrapper')
-              .$DSP->qdiv('itemTitle', "Override code form field")
-              .$DSP->input_text('bypass_field', 'BYPASS_FIELD', '20', '60', 'input', '')
-              .$DSP->div_c();
-              
-	$DSP->body .= $DSP->div('itemWrapper')
-              .$DSP->qdiv('itemTitle', "Override code")
-              .$DSP->input_text('bypass_code', 'BYPASS_CODE', '20', '60', 'input', '')
-              .$DSP->div_c();
-
-
-	$DSP->body .= "</fieldset>";
+		$this->msm_enabled = ($PREFS->ini('multiple_sites_enabled') == "y");
+		$this->this_site_id = $PREFS->ini('site_id');
 		
-	$DSP->body .=   $DSP->td_c();	
+		$this->debug_log("Settings form.");
+		
+		// ---------------------------------------------
+		//	Breadcrumb nav
+		// ---------------------------------------------
+		
+		$DSP->crumbline = TRUE;
+		
+		$DSP->title  = $LANG->line('extension_settings');
+		
+		$DSP->crumb  = $DSP->anchor(BASE.AMP.'C=admin'.AMP.'area=utilities', $LANG->line('utilities')).
+		$DSP->crumb_item(
+			$DSP->anchor(BASE.AMP.'C=admin'.AMP.'M=utilities'.AMP.'P=extensions_manager',
+				$LANG->line('extensions_manager'))
+		);
+		$DSP->crumb .= $DSP->crumb_item($this->name);
+		
+		// ---------------------------------------------
+		//	Body output
+		// ---------------------------------------------
+		
+		$DSP->body = "";
+		
+		// ---------------------------------------------
+		//	Additional stylesheet
+		// ---------------------------------------------
+		
+		ob_start(); 
+		?>
+		
+			<style>
+			.rogee_rc_form fieldset { border: 1px solid #777; background: #EEF4F9; }
+			.rogee_rc_form legend { padding: 7px ; color: black; border: 1px solid #777; background: #B8C6CE; border-radius: 2px; }
+			.rogee_rc_form input { padding: 5px; font-size: 110%; border-radius: 5px; max-width: 40%; border: 1px solid #aaa; }
+			.rogee_rc_form .submit { background: #EEF4F9; cursor: pointer; }
+			.rogee_rc_form .submit:hover { background: #B8C6CE; }
+			.rogee_rc_form .submit:active { position: relative; top: 1px; }
+			
+			.rogee_rc_form .tableBorder td.tableHeadingAlt { padding: 10px 0; }		
+			.rogee_rc_form .tableBorder td { padding: 7px 0; }
+			.rogee_rc_form .tableBorder { border: 1px solid; }
+					
+			</style>
+		
+		<?php
+		$style_from_buffer = ob_get_contents();
+		ob_end_clean(); 
+		
+		$DSP->body .= $style_from_buffer;
+		
+		// ---------------------------------------------
+		//	Set up the settings form
+		// ---------------------------------------------
+			
+		$DSP->body .= $DSP->form_open(
+			array(
+				'action' => 'C=admin'.AMP.'M=utilities'.AMP.'P=save_extension_settings',
+				'name' => 'rogee_registration_codes_settings',
+				'id' => 'rogee_registration_codes_settings',
+				'class' => 'rogee_rc_form'
+			),
+			array(
+				'name' => get_class($this),
+				'return_location' => BASE.AMP.'C=admin'.AMP.'M=utilities'.AMP.'P=extension_settings'.AMP.'name=registration_codes'
+			)
+		);
 	
-	// END General Settings table
+		// ---------------------------------------------
+		//	General settings
+		// ---------------------------------------------
 	
-	$DSP->body .=   $DSP->table_c();
-
-	$DSP->body .= "<br />";
-
-	// ---------------------------------------------
-	//	Registration codes
-	// ---------------------------------------------
-
-	$DSP->body .=   $DSP->table('tableBorder', '1', '0', '100%','1');
+		// OPEN General Settings table
 	
-	$DSP->body .=   $DSP->tr();
-	$DSP->body .=   $DSP->td('tableHeadingAlt', '', '3');
-	$DSP->body .=   "test2";
-	$DSP->body .=   $DSP->td_c();
-	$DSP->body .=   $DSP->tr_c();
+		$DSP->body .=   $DSP->table('', '10', '10', '100%','0');
+		
+		// General settings
+		
+		$DSP->body .=   $DSP->tr();
+		
+		// General settings: Operation
+		
+		$DSP->body .=   $DSP->td('','50%','','','top');
+		
+		$DSP->body .= "<fieldset><legend class=\"defaultBold\">General settings</legend>";
+		
+		$DSP->body .= $DSP->div('itemWrapper')
+			.$DSP->qdiv('itemTitle', "Form field [name]")
+	        .$DSP->input_text('form_field', $current['form_field'], '20', '60', 'input')
+	        .$DSP->div_c();
+	              
+		$DSP->body .= $DSP->div('itemWrapper')
+			.$DSP->qdiv('itemTitle', "Require valid code to register?")
+			.$DSP->input_select_header('require_valid_code')
+			.$DSP->input_select_option('y', $LANG->line('yes'), ($current['require_valid_code'] == 'y'))
+			.$DSP->input_select_option('n', $LANG->line('no'), ($current['require_valid_code'] == 'n'))
+			.$DSP->input_select_footer()
+			.$DSP->div_c();
 	
-	$DSP->body .=	$DSP->table_row(array(
-				'cell1' => array('valign' => "top", 'text' => $first_text), 'width' => "7%",
-				'cell2' => array('valign' => "top", 'class' => "default", 'width'  => "30%"),
-				'cell3' => array('valign' => "top", 'text' => $third_text, 'width'  => "35%"),
-				'cell4' => array('valign' => "top", 'text' => $third_text, 'width'  => "38%"),
+		$DSP->body .= "</fieldset>";
+			
+		$DSP->body .=   $DSP->td_c();
+		
+		// General settings: Override
+		
+		$DSP->body .=   $DSP->td('','50%','','','top');
+		
+		$DSP->body .= "<fieldset><legend class=\"defaultBold\">Override settings</legend>";
+		
+		$DSP->body .= $DSP->div('itemWrapper')
+			.$DSP->qdiv('itemTitle', "Bypass extension if override code is present?")
+			.$DSP->input_select_header('bypass_enabled')
+			.$DSP->input_select_option('y', $LANG->line('yes'), ($current['bypass_enabled'] == 'y'))
+			.$DSP->input_select_option('n', $LANG->line('no'), ($current['bypass_enabled'] == 'n'))
+			.$DSP->input_select_footer()
+			.$DSP->div_c();
+	
+		$DSP->body .= $DSP->div('itemWrapper')
+			.$DSP->qdiv('itemTitle', "Override code form field")
+			.$DSP->input_text('bypass_form_field', $current['bypass_form_field'], '20', '60', 'input', '')
+			.$DSP->div_c();
+	              
+		$DSP->body .= $DSP->div('itemWrapper')
+			.$DSP->qdiv('itemTitle', "Override code")
+			.$DSP->input_text('bypass_code', $current['bypass_code'], '20', '60', 'input', '')
+			.$DSP->div_c();
+	
+		$DSP->body .= "</fieldset>";
+			
+		$DSP->body .=   $DSP->td_c();	
+		
+		// END General Settings table
+		
+		$DSP->body .=   $DSP->table_c();
+	
+		$DSP->body .= "<br />";
+	
+		// ---------------------------------------------
+		//	Registration codes
+		// ---------------------------------------------	
+		
+		// Get registration_code data from the database
+		
+		$registration_code_data = array();
+		
+		$query = $DB->query("SELECT * FROM exp_rogee_registration_codes WHERE site_id IN (0,".$this->this_site_id.")");
+	
+		if ($query->num_rows > 0)
+		{
+			foreach($query->result as $row)
+			{
+				
+				$row_data = array(
+					'code_id' => $row['code_id'],
+					'site_id' => $row['site_id'],
+					'code_string' => $row['code_string'],
+					'destination_group' => $row['destination_group']
 				);
-	/*
+				
+				$registration_code_data[ $row['code_id'] ] = $row_data;
 	
-	$DSP->body .=   $DSP->tr();
-	$DSP->body .=   $DSP->td('tableCellOne', '25%');
-	$DSP->body .=   $DSP->qdiv('defaultBold', $LANG->line('rogee_rc_name'));
-	$DSP->body .=   $DSP->td_c();
-	$DSP->body .=   $DSP->td('tableCellOne');
-	$DSP->body .=   $DSP->input_text('log_table', ( ! isset($current['log_table'])) ? '' : $current['log_table']);
-	$DSP->body .=   $DSP->td_c();
-	$DSP->body .=   $DSP->tr_c();
-	*/
+			}
+		}
+		
+		// Open table
+		
+		$DSP->body .=  $DSP->table_open(array(
+			'class' => 'tableBorder',
+			'width' => '100%')
+		);
+		
+		// Header row
+		
+		$DSP->body .= $DSP->table_row(array(
+			'cell1' => array('valign' => "middle", 'class' => 'tableHeadingAlt', 'text' => "", 'width' => "7%"),
+			'cell2' => array('valign' => "middle", 'class' => 'tableHeadingAlt', 'text' => "Registration code", 'width'  => "40%"),
+			'cell3' => array('valign' => "middle", 'class' => 'tableHeadingAlt', 'text' => "Destination group", 'width'  => "30%"),
+			'cell4' => array('valign' => "middle", 'class' => 'tableHeadingAlt', 'text' => "Site", 'width'  => "33%")
+		));
+		
+		// Form field rows for EXISTING CODES
+		
+		foreach($registration_code_data as $row)
+		{
 	
-	$DSP->body .=   $DSP->table_c();
+			$current_zebra_class = $this->zebra_stripe();
+			
+			$code_id_content = $row['code_id'];
+			
+			$code_string_content = $DSP->input_text('code_id_'.$row['code_id'], $row['code_string'], '20', '80', 'input', '');
+			
+			$destination_group_content = $DSP->input_select_header('destination_group_'.$row['code_id'])
+				.$this->group_menu($row['destination_group'])
+				.$DSP->input_select_footer();
+			
+			$site_id_content = "";
+		
+			if (!$this->msm_enabled)
+			{
+				$site_id_content = "- (".$row['site_id'].")";
+			}
+			else
+			{
+				$site_id_content = $DSP->input_select_header('site_id_'.$row['code_id'])
+					.$DSP->input_select_option(0, "All sites")
+					.$DSP->input_select_option($this->this_site_id, "This site: ".$PREFS->ini('site_label'))
+					.$DSP->input_select_footer();
+			}
+		
+			$DSP->body .= $DSP->table_row(array(
+				'code_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $code_id_content, 'align' => 'center'),
+				'code_string' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $code_string_content),
+				'destination_group' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $destination_group_content),
+				'site_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $site_id_content)
+			));
 	
-	$DSP->body .=   $DSP->qdiv('itemWrapperTop', $DSP->input_submit());
-	$DSP->body .=   $DSP->form_c();
-}
+		}
+		
+		// Form field rows for NEW CODE
+		
+		$current_zebra_class = $this->zebra_stripe();
+			
+		$code_id_content = "(new)";
+		
+		$code_string_content = $DSP->input_text('code_id_new', '', '20', '80', 'input', '');
+		
+		$destination_group_content = $DSP->input_select_header('destination_group_'.$row['code_id'])
+			.$this->group_menu(0)
+			.$DSP->input_select_footer();
+		
+		$site_id_content = "";
+	
+		if (!$this->msm_enabled)
+		{
+			$site_id_content = $DSP->input_hidden('site_id_new', $this->this_site_id);
+		}
+		else
+		{
+			$site_id_content = $DSP->input_select_header('site_id_new')
+				.$DSP->input_select_option(0, "All sites")
+				.$DSP->input_select_option($this->this_site_id, "This site: ".$PREFS->ini('site_label'))
+				.$DSP->input_select_footer();
+		}
+	
+		$DSP->body .= $DSP->table_row(array(
+			'code_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $code_id_content, 'align' => 'center'),
+			'code_string' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $code_string_content),
+			'destination_group' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $destination_group_content),
+			'site_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $site_id_content)
+		));	
+		
+		// ---------------------------------------------
+		//	Close out the form (and table)
+		// ---------------------------------------------
+		
+		$DSP->body .=   $DSP->table_close();
+		
+		$DSP->body .=   $DSP->qdiv('itemWrapperTop', $DSP->input_submit('Submit','submit_return')." ".$DSP->input_submit('Submit and Finished','submit_finished'));
+		$DSP->body .=   $DSP->form_close();
 
-	
+	}
 
-// TODO settings_form()
-// TODO save_settings()
+// TODO save_settings() - IN PROGRESS
 // TODO execute_registration_code()
 // TODO validate_registration_code()
+
+
+	/**
+	* ==============================================
+	* Test hook
+	* ==============================================
+	*
+	*/
+	function test_hook($str) {
+	
+		$this->debug_log("Hook test.");
+		
+	}
+	// END hook_test()
+
+
+	/**
+	* ==============================================
+	* Save settings
+	* ==============================================
+	*
+	* Processes general settings (serializes the array and updates database rows
+	* AND processes registration codes (compares POST values with current database rows, updates table)
+	*
+	*/
+	function save_settings() {
+	
+		// ---------------------------------------------
+		//	Save general settings
+		// ---------------------------------------------
+		
+		global $IN;
+		
+		$new_settings = array();
+		$new_settings['require_valid_code'] = ($IN->GBL('require_valid_code', 'POST') ? $IN->GBL('require_valid_code', 'POST') : $this->settings['require_valid_code']);
+		$new_settings['form_field'] = ($IN->GBL('form_field', 'POST') ? $this->clean_string($IN->GBL('form_field', 'POST'), true) : $this->settings['form_field']);
+		$new_settings['bypass_enabled'] = ($IN->GBL('bypass_enabled', 'POST') ? $IN->GBL('bypass_enabled', 'POST') : $this->settings['bypass_enabled']);
+		$new_settings['bypass_code'] = ($IN->GBL('bypass_code', 'POST') ? $this->clean_string($IN->GBL('bypass_code', 'POST')) : $this->settings['bypass_code']);
+		$new_settings['bypass_form_field'] = ($IN->GBL('bypass_form_field', 'POST') ? $this->clean_string($IN->GBL('bypass_form_field', 'POST'), true) : $this->settings['bypass_form_field']);
+		$this->settings = $new_settings;
+		
+		global $DB;
+		
+		$DB->query($DB->update_string('exp_extensions', array('settings' => serialize($new_settings)), array('class' => __CLASS__)));
+
+		// ---------------------------------------------
+		//	Get current codes data, for comparison
+		// ---------------------------------------------
+		
+		
+		/*
+		$registration_code_data = array();
+		
+		$query = $DB->query("SELECT * FROM exp_rogee_registration_codes WHERE site_id IN (0,".$this->this_site_id.")");
+	
+		if ($query->num_rows > 0)
+		{
+			foreach($query->result as $row)
+			{
+				
+				$row_data = array(
+					'code_id' => $row['code_id'],
+					'site_id' => $row['site_id'],
+					'code_string' => $row['code_string'],
+					'destination_group' => $row['destination_group']
+				);
+				
+				$registration_code_data[ $row['code_id'] ] = $row_data;
+	
+			}
+		}
+		*/
+
+		// ---------------------------------------------
+		//	Also, 
+		// ---------------------------------------------
+		
+		// ---------------------------------------------
+		//	Compare POST to new
+		// ---------------------------------------------
+		
+		
+	
+		// ---------------------------------------------
+		//	Return to the settings form (if I'm not finished editing yet)
+		// ---------------------------------------------
+			
+		if ($IN->GBL('submit_return', 'POST') && $IN->GBL('return_location', 'POST'))
+		{
+			global $FNS;
+			$FNS->redirect($IN->GBL('return_location', 'POST'));
+		}
+	
+	}
+	// END save_settings()
+
+
+
+	/**
+	* ==============================================
+	* Group menu
+	* ==============================================
+	*
+	* Whips up the OPTIONS for a select menu using the member groups in the database,
+	* optionally marking the option corresponding to the provided group_id as selected
+	*
+	* @param int: group_id to mark as selected
+	* @return string: HTML for select menu OPTIONS
+	*
+	*/
+	private function group_menu($selected = 0) {
+		
+		global $DB, $DSP;
+		
+		if (!isset($this->member_group_data))
+		{
+		
+			// Get member group list from the database
+			
+			$this->member_group_data = array();
+			
+			$query = $DB->query("SELECT * FROM exp_member_groups WHERE site_id = " . $this->this_site_id);
+		
+			if ($query->num_rows > 0)
+			{
+				foreach($query->result as $row)
+				{
+					$row_data = array(
+						'group_id' => $row['group_id'],
+						'group_title' => $row['group_title']
+					);	
+					$this->member_group_data[ $row['group_id'] ] = $row_data;
+				}
+			}		
+		
+		}
+		
+		// Write the options
+		
+		$options_html = "";
+		$options_html .= $DSP->input_select_option(0, "(Default member group)", (0 == $selected));
+		foreach($this->member_group_data as $row)
+		{
+			$options_html .= $DSP->input_select_option($row['group_id'], $row['group_id'].": ".$row['group_title'], ($row['group_id'] == $selected));
+		}
+		return $options_html;
+		
+	}
+
+
+
+	/**
+	* ==============================================
+	* Zebra stripe
+	* ==============================================
+	*
+	* Provides a switching classname for zebra-striping tables
+	*
+	* @return string: table cell class name
+	*
+	*/
+	private function zebra_stripe() {
+		
+		switch ($this->zebra_class) {
+			case "":
+				$this->zebra_class = "tableCellOne";
+				return $this->zebra_class;
+				break;
+			case "tableCellOne":
+				$this->zebra_class = "tableCellTwo";
+				return $this->zebra_class;
+				break;
+			case "tableCellTwo":
+				$this->zebra_class = "tableCellOne";
+				return $this->zebra_class;
+				break;
+		}
+		
+	}
+
 
 
 	/**
@@ -420,11 +757,15 @@ $DSP->body .=   $DSP->table('', '10', '10', '100%','0');
 	* @see http://cubiq.org/the-perfect-php-clean-url-generator
 	*
 	*/
-	private function clean_string($str) {
+	private function clean_string($str, $remove_spaces) {
 	
 		$clean = preg_replace("/[^a-zA-Z0-9\/_| -]/", '', $str);
 		$clean = trim($clean, '-');
 		$clean = preg_replace("/[\/|_]+/", '_', $clean);
+		if ($remove_spaces)
+		{
+			$clean = preg_replace("/ /", '_', $clean);
+		}
 		return $clean;
 		
 	}
