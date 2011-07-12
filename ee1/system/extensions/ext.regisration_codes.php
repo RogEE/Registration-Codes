@@ -37,7 +37,7 @@ class Registration_codes
 	// ---------------------------------------------
 
 	var $name = 'Registration Codes';
-	var $version = '1.2.0';
+	var $version = '1.3.0';
 	var $description = 'Sort/limit new member registrations based on custom registration codes.';
 	var $settings_exist = 'y';
 	var $docs_url = 'http://rog.ee/registration_codes';
@@ -587,11 +587,11 @@ class Registration_codes
 		// ---------------------------------------------
 		
 		$new_settings = array();
-		$new_settings['require_valid_code'] = ($IN->GBL('require_valid_code', 'POST') ? $IN->GBL('require_valid_code', 'POST') : $this->settings['require_valid_code']);
-		$new_settings['form_field'] = ($IN->GBL('form_field', 'POST') ? $this->clean_string($IN->GBL('form_field', 'POST'), true) : $this->settings['form_field']);
-		$new_settings['bypass_enabled'] = ($IN->GBL('bypass_enabled', 'POST') ? $IN->GBL('bypass_enabled', 'POST') : $this->settings['bypass_enabled']);
-		$new_settings['bypass_code'] = ($IN->GBL('bypass_code', 'POST') ? $this->clean_string($IN->GBL('bypass_code', 'POST')) : $this->settings['bypass_code']);
-		$new_settings['bypass_form_field'] = ($IN->GBL('bypass_form_field', 'POST') ? $this->clean_string($IN->GBL('bypass_form_field', 'POST'), true) : $this->settings['bypass_form_field']);
+		$new_settings['require_valid_code'] = (($IN->GBL('require_valid_code', 'POST') !== FALSE) ? $IN->GBL('require_valid_code', 'POST') : $this->settings['require_valid_code']);
+		$new_settings['form_field'] = (($IN->GBL('form_field', 'POST') !== FALSE) ? $this->clean_string($IN->GBL('form_field', 'POST'), true) : $this->settings['form_field']);
+		$new_settings['bypass_enabled'] = (($IN->GBL('bypass_enabled', 'POST') !== FALSE) ? $IN->GBL('bypass_enabled', 'POST') : $this->settings['bypass_enabled']);
+		$new_settings['bypass_code'] = (($IN->GBL('bypass_code', 'POST') !== FALSE) ? $this->clean_string($IN->GBL('bypass_code', 'POST')) : $this->settings['bypass_code']);
+		$new_settings['bypass_form_field'] = (($IN->GBL('bypass_form_field', 'POST') !== FALSE) ? $this->clean_string($IN->GBL('bypass_form_field', 'POST'), true) : $this->settings['bypass_form_field']);
 		$this->settings = $new_settings;
 		
 		$DB->query($DB->update_string('exp_extensions', array('settings' => serialize($new_settings)), array('class' => __CLASS__)));
