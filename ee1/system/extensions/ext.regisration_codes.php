@@ -11,9 +11,6 @@ email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
 >> http://rog.ee
 
-This extension is compatible with NSM Addon Updater:
->> http://leevigraham.com/cms-customisation/expressionengine/lg-addon-updater/
-
 Change-log:
 >> http://rog.ee/versions/registration_codes
 
