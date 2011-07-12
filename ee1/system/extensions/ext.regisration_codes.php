@@ -570,9 +570,6 @@ class Registration_codes
 	}
 
 
-// TODO execute_registration_code()
-// TODO validate_registration_code() - IN PROGRESS
-
 
 	/**
 	* ==============================================
@@ -847,12 +844,79 @@ class Registration_codes
 	* Execute registration code
 	* ==============================================
 	*
-	* This method runs before a new member registration is processed and returns an error if the registration code isn't valid.
+	* This method runs when a new member registration is complete
+	* and moves the new member to an appropriate group
+	* if they have provided a valid registration code.
 	*
 	*/
-	function execute_registration_code() {
+	function execute_registration_code($data) {
 
 		global $IN, $DB;
+		
+		// ---------------------------------------------
+		//	Skip this business if the bypass code is present...
+		// ---------------------------------------------
+		
+		if ($this->settings['bypass_enabled'] == 'y')
+		{
+			if (
+				$IN->GBL($this->settings['bypass_form_field'], 'POST') !== false
+				AND $IN->GBL($this->settings['bypass_form_field'], 'POST') == $this->settings['bypass_code']
+			)
+			{
+				return;
+			}
+		}
+
+		// ---------------------------------------------
+		//	Check to see if there's a code match
+		// ---------------------------------------------
+		
+		$match = false;
+		
+		$submitted_code = $IN->GBL($this->settings['form_field'], 'POST');
+		
+		if ($submitted_code !== false)
+		{
+
+			$code_list = array();
+			
+			$query = $DB->query(
+				"SELECT * FROM exp_rogee_registration_codes
+				WHERE site_id IN (0,".$this->this_site_id.")
+				AND code_string = ".$submitted_code
+				." LIMIT 1"
+				);		
+
+			if ($query->num_rows == 1)
+			{
+				
+				// Woohoo! Match!
+				
+				$match = true;
+				$destination_group = $query->row['destination_group'];
+				
+				// Get some info from the hook
+				
+				$g = $data['group_id'];
+				$u = $data['username'];
+				
+				// If they're not already in the intended destination group, move them.
+				
+				if ($destination_group != $g)
+				{
+					
+					$DB->query(
+						$DB->update_string('exp_members', array('group_id' => $destination_group), array('username' => $u))
+					);
+					
+					$this->debug_log("Moving member [".$u."] to group $destination_group. (Code: ".$query->row['code_string'].")");
+					
+				}
+				
+			}
+
+		}
 		
 	}
 	// END execute_registration_code()
