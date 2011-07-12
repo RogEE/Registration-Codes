@@ -441,7 +441,7 @@ class Registration_codes
 		
 		$registration_code_data = array();
 		
-		$query = $DB->query("SELECT * FROM exp_rogee_registration_codes WHERE site_id IN (0,".$this->this_site_id.")");
+		$query = $DB->query("SELECT * FROM exp_rogee_registration_codes WHERE site_id IN (0,".$this->this_site_id.") ORDER BY code_string");
 	
 		if ($query->num_rows > 0)
 		{
@@ -483,9 +483,9 @@ class Registration_codes
 	
 			$current_zebra_class = $this->zebra_stripe();
 			
-			$code_id_content = $row['code_id'];
+			$code_id_content = $DSP->input_hidden('code_id_'.$row['code_id'], $row['code_id']);
 			
-			$code_string_content = $DSP->input_text('code_id_'.$row['code_id'], $row['code_string'], '20', '80', 'input', '');
+			$code_string_content = $DSP->input_text('code_string_'.$row['code_id'], $row['code_string'], '20', '80', 'input', '');
 			
 			$destination_group_content = $DSP->input_select_header('destination_group_'.$row['code_id'])
 				.$this->group_menu($row['destination_group'])
@@ -495,13 +495,13 @@ class Registration_codes
 		
 			if (!$this->msm_enabled)
 			{
-				$site_id_content = "- (".$row['site_id'].")";
+				$site_id_content = "-".$DSP->input_hidden('site_id_new', $row['site_id']);
 			}
 			else
 			{
 				$site_id_content = $DSP->input_select_header('site_id_'.$row['code_id'])
-					.$DSP->input_select_option(0, "All sites")
-					.$DSP->input_select_option($this->this_site_id, "This site: ".$PREFS->ini('site_label'))
+					.$DSP->input_select_option(0, "All sites", ($row['site_id'] == 0))
+					.$DSP->input_select_option($this->this_site_id, "This site: ".$PREFS->ini('site_label'), ($row['site_id'] == $this->this_site_id))
 					.$DSP->input_select_footer();
 			}
 		
@@ -518,11 +518,11 @@ class Registration_codes
 		
 		$current_zebra_class = $this->zebra_stripe();
 			
-		$code_id_content = "(new)";
+		$code_id_content = "(new)".$DSP->input_hidden('code_id_new', "new");
 		
-		$code_string_content = $DSP->input_text('code_id_new', '', '20', '80', 'input', '');
+		$code_string_content = $DSP->input_text('code_string_new', '', '20', '80', 'input', '');
 		
-		$destination_group_content = $DSP->input_select_header('destination_group_'.$row['code_id'])
+		$destination_group_content = $DSP->input_select_header('destination_group_new')
 			.$this->group_menu(0)
 			.$DSP->input_select_footer();
 		
@@ -530,7 +530,7 @@ class Registration_codes
 	
 		if (!$this->msm_enabled)
 		{
-			$site_id_content = $DSP->input_hidden('site_id_new', $this->this_site_id);
+			$site_id_content = "-".$DSP->input_hidden('site_id_new', $this->this_site_id);
 		}
 		else
 		{
@@ -557,6 +557,8 @@ class Registration_codes
 		$DSP->body .=   $DSP->form_close();
 
 	}
+
+
 
 // TODO save_settings() - IN PROGRESS
 // TODO execute_registration_code()
@@ -588,11 +590,18 @@ class Registration_codes
 	*/
 	function save_settings() {
 	
+		global $PREFS, $DB, $LANG, $IN;
+		
+		// ---------------------------------------------
+		//	MSM prefs
+		// ---------------------------------------------
+		
+		$this->msm_enabled = ($PREFS->ini('multiple_sites_enabled') == "y");
+		$this->this_site_id = $PREFS->ini('site_id');
+
 		// ---------------------------------------------
 		//	Save general settings
 		// ---------------------------------------------
-		
-		global $IN;
 		
 		$new_settings = array();
 		$new_settings['require_valid_code'] = ($IN->GBL('require_valid_code', 'POST') ? $IN->GBL('require_valid_code', 'POST') : $this->settings['require_valid_code']);
@@ -602,17 +611,21 @@ class Registration_codes
 		$new_settings['bypass_form_field'] = ($IN->GBL('bypass_form_field', 'POST') ? $this->clean_string($IN->GBL('bypass_form_field', 'POST'), true) : $this->settings['bypass_form_field']);
 		$this->settings = $new_settings;
 		
-		global $DB;
-		
 		$DB->query($DB->update_string('exp_extensions', array('settings' => serialize($new_settings)), array('class' => __CLASS__)));
 
 		// ---------------------------------------------
-		//	Get current codes data, for comparison
+		//	Set up some lists
 		// ---------------------------------------------
+
+		$db_data = array();
+		$new_data = array();
+		$to_do = array();
+		$deletes = array();
+		$dupes = array();
 		
-		
-		/*
-		$registration_code_data = array();
+		// ---------------------------------------------
+		//	Get a local copy of data from database (the "old" dataset)
+		// ---------------------------------------------
 		
 		$query = $DB->query("SELECT * FROM exp_rogee_registration_codes WHERE site_id IN (0,".$this->this_site_id.")");
 	
@@ -628,22 +641,134 @@ class Registration_codes
 					'destination_group' => $row['destination_group']
 				);
 				
-				$registration_code_data[ $row['code_id'] ] = $row_data;
+				$db_data[ $row['code_id'] ] = $row_data;
 	
 			}
 		}
-		*/
+		
+		// ---------------------------------------------
+		//	Get input data, assemble "new" dataset
+		//	and set up $deletes and $to_do lists
+		// ---------------------------------------------
+
+		// var_dump($IN->GBL('site_id_3', 'POST') !== false);
+
+		foreach($db_data as $row)
+		{
+			
+			$i = $row['code_id'];
+			
+			$new_data_vals = array(
+				'code_id' => $i,
+				'code_string' => (($IN->GBL('code_string_'.$i, 'POST') !== false) ? $IN->GBL('code_string_'.$i, 'POST') : $row['code_string']),
+				'destination_group' => (($IN->GBL('destination_group_'.$i, 'POST') !== false) ? $IN->GBL('destination_group_'.$i, 'POST') : $row['destination_group']),
+				'site_id' => (($IN->GBL('site_id_'.$i, 'POST') !== false) ? $IN->GBL('site_id_'.$i, 'POST') : $row['site_id'])
+			);
+			
+			$new_data[$i] = $new_data_vals;
+			
+			if ($new_data_vals['code_string'] === "")
+			{
+				$deletes[] = $i;
+			}
+			else
+			{
+				$to_do[$i] = $new_data_vals['code_string'];
+			}
+
+		}
+		
+		// ---------------------------------------------
+		//	Delete the codes that were left blank
+		// ---------------------------------------------
+
+		if (!empty($deletes))
+		{
+			$DB->query("DELETE FROM exp_rogee_registration_codes WHERE code_id IN (". implode(",", $deletes) .")");
+		}	
 
 		// ---------------------------------------------
-		//	Also, 
+		//	Make a list of duplicate code_string values in the "new" dataset
+		//	(These will be omitted from processing)
 		// ---------------------------------------------
+
+		$code_counts = array_count_values($to_do);
+		
+		foreach($code_counts as $code => $count)
+		{
+			if ($count > 1)
+			{
+				$dupes[] = $code;
+			}
+		}
+		
+		$to_do = array_diff($to_do, $dupes);
+		
+		// var_dump($code_counts);
+		// var_dump($to_do);
+		// var_dump($dupes);
+		
+		// TODO --- error message for dupes not edited
 		
 		// ---------------------------------------------
-		//	Compare POST to new
+		//	Update the database
+		//	wherever the new dataset (sans dupes) is different from the old
 		// ---------------------------------------------
-		
-		
 	
+		// var_dump($new_data);
+		
+		foreach ($to_do as $i => $code)
+		{
+		
+			$changes = array();
+			
+			if ($new_data[$i]['code_string'] != $db_data[$i]['code_string'])
+			{
+				$changes['code_string'] = $new_data[$i]['code_string'];
+			}
+			if ($new_data[$i]['destination_group'] != $db_data[$i]['destination_group'])
+			{
+				$changes['destination_group'] = $new_data[$i]['destination_group'];
+			}
+			if ($new_data[$i]['site_id'] != $db_data[$i]['site_id'])
+			{
+				$changes['site_id'] = $new_data[$i]['site_id'];
+			}
+			
+			if (!empty($changes))
+			{
+				$DB->query($DB->update_string('exp_rogee_registration_codes', $changes, array('code_id' => $i)));
+			}
+			
+		}
+		
+
+		// ---------------------------------------------
+		//	Add a new code, if one is supplied (and it is not a dupe)
+		// ---------------------------------------------		
+
+		if ($IN->GBL('code_string_new', 'POST') != "")
+		{	
+		
+			$i = 'new';
+			
+			$new_data_vals = array(
+				'code_string' => $IN->GBL('code_string_'.$i, 'POST'),
+				'destination_group' => (($IN->GBL('destination_group_'.$i, 'POST') !== false) ? $IN->GBL('destination_group_'.$i, 'POST') : 0),
+				'site_id' => (($IN->GBL('site_id_'.$i, 'POST') !== false) ? $IN->GBL('site_id_'.$i, 'POST') : 0)
+			);
+			
+			if (!in_array($new_data_vals['code_string'], $dupes) AND !in_array($new_data_vals['code_string'], $to_do))
+			{
+				$DB->query($DB->insert_string('exp_rogee_registration_codes', $new_data_vals));
+			}
+			else
+			{
+				// TODO --- error message for dupes not added
+			}
+			
+		}
+
 		// ---------------------------------------------
 		//	Return to the settings form (if I'm not finished editing yet)
 		// ---------------------------------------------
