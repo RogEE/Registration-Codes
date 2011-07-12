@@ -79,8 +79,22 @@ class Registration_codes
     
 	function Registration_codes($settings="")
 	{
+		
+		// ---------------------------------------------
+		//	Basic boot-up
+		// ---------------------------------------------
+		
 		$this->settings = $settings;	
 		$this->debug_log("Constructor.");
+		
+		// ---------------------------------------------
+		//	MSM prefs
+		// ---------------------------------------------
+		
+		global $PREFS;
+		$this->msm_enabled = ($PREFS->ini('multiple_sites_enabled') == "y");
+		$this->this_site_id = $PREFS->ini('site_id');
+		
 	}
 	// END Constructor
     
@@ -293,9 +307,6 @@ class Registration_codes
 	{
 		
 		global $PREFS, $DB, $DSP, $LANG, $IN;
-		
-		$this->msm_enabled = ($PREFS->ini('multiple_sites_enabled') == "y");
-		$this->this_site_id = $PREFS->ini('site_id');
 		
 		$this->debug_log("Settings form.");
 		
@@ -559,24 +570,8 @@ class Registration_codes
 	}
 
 
-
-// TODO save_settings() - IN PROGRESS
 // TODO execute_registration_code()
-// TODO validate_registration_code()
-
-
-	/**
-	* ==============================================
-	* Test hook
-	* ==============================================
-	*
-	*/
-	function test_hook($str) {
-	
-		$this->debug_log("Hook test.");
-		
-	}
-	// END hook_test()
+// TODO validate_registration_code() - IN PROGRESS
 
 
 	/**
@@ -591,13 +586,6 @@ class Registration_codes
 	function save_settings() {
 	
 		global $PREFS, $DB, $LANG, $IN;
-		
-		// ---------------------------------------------
-		//	MSM prefs
-		// ---------------------------------------------
-		
-		$this->msm_enabled = ($PREFS->ini('multiple_sites_enabled') == "y");
-		$this->this_site_id = $PREFS->ini('site_id');
 
 		// ---------------------------------------------
 		//	Save general settings
@@ -651,8 +639,6 @@ class Registration_codes
 		//	and set up $deletes and $to_do lists
 		// ---------------------------------------------
 
-		// var_dump($IN->GBL('site_id_3', 'POST') !== false);
-
 		foreach($db_data as $row)
 		{
 			
@@ -704,18 +690,12 @@ class Registration_codes
 		
 		$to_do = array_diff($to_do, $dupes);
 		
-		// var_dump($code_counts);
-		// var_dump($to_do);
-		// var_dump($dupes);
-		
 		// TODO --- error message for dupes not edited
 		
 		// ---------------------------------------------
 		//	Update the database
 		//	wherever the new dataset (sans dupes) is different from the old
 		// ---------------------------------------------
-	
-		// var_dump($new_data);
 		
 		foreach ($to_do as $i => $code)
 		{
@@ -782,6 +762,116 @@ class Registration_codes
 	}
 	// END save_settings()
 
+
+
+	/**
+	* ==============================================
+	* Validate registration code
+	* ==============================================
+	*
+	* This method runs before a new member registration is processed and returns an error if the registration code isn't valid.
+	*
+	*/
+	function validate_registration_code() {
+
+		global $IN, $DB;
+
+		// ---------------------------------------------
+		//	We only care about this function if we require a valid code for registration.
+		// ---------------------------------------------
+		if ($this->settings['require_valid_code'] == 'n')
+		{
+			return;
+		}
+		
+		// ---------------------------------------------
+		//	Also, we can bypass the extension by providing the override code in the POST data.
+		// ---------------------------------------------
+		
+		if ($this->settings['bypass_enabled'] == 'y')
+		{
+			if (
+				$IN->GBL($this->settings['bypass_form_field'], 'POST') !== false
+				AND $IN->GBL($this->settings['bypass_form_field'], 'POST') == $this->settings['bypass_code']
+			)
+			{
+				return;
+			}
+		}
+		
+		// ---------------------------------------------
+		//	Find a match... if you can...
+		// ---------------------------------------------
+		
+		$match = false;
+		
+		$submitted_code = $IN->GBL($this->settings['form_field'], 'POST');
+		
+		if ($submitted_code !== false)
+		{
+
+			$code_list = array();
+			
+			$query = $DB->query("SELECT code_string FROM exp_rogee_registration_codes WHERE site_id IN (0,".$this->this_site_id.")");		
+
+			if ($query->num_rows > 0)
+			{
+				foreach($query->result as $row)
+				{	
+					$code_list[] = $row['code_string'];
+				}
+			}		
+
+			if (in_array($submitted_code, $code_list))
+			{
+				// woohooo!
+				$match = true;			
+			}
+
+		}
+	
+		if (!$match)
+		{
+			global $OUT;
+			$errors = array("You must supply a valid registration code.");
+			return $OUT->show_user_error('submission', $errors);
+		}
+
+	}
+	// END validate_registration_code()
+
+
+
+	/**
+	* ==============================================
+	* Execute registration code
+	* ==============================================
+	*
+	* This method runs before a new member registration is processed and returns an error if the registration code isn't valid.
+	*
+	*/
+	function execute_registration_code() {
+
+		global $IN, $DB;
+		
+	}
+	// END execute_registration_code()
+	
+
+
+	/**
+	* ==============================================
+	* Test hook
+	* ==============================================
+	*
+	*/
+	function test_hook($str) {
+	
+		$this->debug_log("Hook test.");
+		
+	}
+	// END hook_test()
+	
 
 
 	/**
