@@ -40,7 +40,7 @@ class Registration_codes
 	// ---------------------------------------------
 
 	var $name = 'Registration Codes';
-	var $version = '2.0.0';
+	var $version = '1.2.0';
 	var $description = 'Sort/limit new member registrations based on custom registration codes.';
 	var $settings_exist = 'y';
 	var $docs_url = 'http://rog.ee/registration_codes';
@@ -50,7 +50,7 @@ class Registration_codes
     // ---------------------------------------------
     
 	var $settings = array();
-	var $dev_on = TRUE;
+	var $dev_on = FALSE;
 	var $nuke_log_on_uninstall = FALSE;
 
 	// ---------------------------------------------
@@ -84,8 +84,7 @@ class Registration_codes
 		//	Basic boot-up
 		// ---------------------------------------------
 		
-		$this->settings = $settings;	
-		$this->debug_log("Constructor.");
+		$this->settings = $settings;
 		
 		// ---------------------------------------------
 		//	MSM prefs
@@ -164,7 +163,7 @@ class Registration_codes
 				'extension_id' => '',
 				'class' => __CLASS__,
 				'hook' => 'user_register_end',
-				'method' => 'execute_registration_code',
+				'method' => 'execute_registration_code_solspace',
 				'settings' => serialize($settings),
 				'priority' => 5,
 				'version' => $this->version,
@@ -568,6 +567,7 @@ class Registration_codes
 		$DSP->body .=   $DSP->form_close();
 
 	}
+	// END settings_form()
 
 
 
@@ -580,7 +580,8 @@ class Registration_codes
 	* AND processes registration codes (compares POST values with current database rows, updates table)
 	*
 	*/
-	function save_settings() {
+	function save_settings()
+	{
 	
 		global $PREFS, $DB, $LANG, $IN;
 
@@ -718,7 +719,6 @@ class Registration_codes
 			}
 			
 		}
-		
 
 		// ---------------------------------------------
 		//	Add a new code, if one is supplied (and it is not a dupe)
@@ -766,10 +766,12 @@ class Registration_codes
 	* Validate registration code
 	* ==============================================
 	*
-	* This method runs before a new member registration is processed and returns an error if the registration code isn't valid.
+	* This method runs before a new member registration is processed
+	* and returns an error if the registration code isn't valid.
 	*
 	*/
-	function validate_registration_code() {
+	function validate_registration_code()
+	{
 
 		global $IN, $DB;
 
@@ -778,6 +780,7 @@ class Registration_codes
 		// ---------------------------------------------
 		if ($this->settings['require_valid_code'] == 'n')
 		{
+			$this->debug_log("Validation: Skipping validation (Valid code not required)");
 			return;
 		}
 		
@@ -792,6 +795,7 @@ class Registration_codes
 				AND $IN->GBL($this->settings['bypass_form_field'], 'POST') == $this->settings['bypass_code']
 			)
 			{
+				$this->debug_log("Validation: Bypassed");
 				return;
 			}
 		}
@@ -822,9 +826,19 @@ class Registration_codes
 			if (in_array($submitted_code, $code_list))
 			{
 				// woohooo!
-				$match = true;			
+				$match = true;
+				
+				$this->debug_log("Validation: Validated code: ".$submitted_code);			
+			}
+			else
+			{
+				$this->debug_log("Validation: Not a valid code: ".$submitted_code);			
 			}
 
+		}
+		else
+		{
+			$this->debug_log("Validation: No code submitted");
 		}
 	
 		if (!$match)
@@ -848,8 +862,12 @@ class Registration_codes
 	* and moves the new member to an appropriate group
 	* if they have provided a valid registration code.
 	*
+	* @param $data Array: member data from EE
+	* @param $member_id mixed: false by default, hoping for an int
+	*
 	*/
-	function execute_registration_code($data) {
+	function execute_registration_code($data, $member_id=false)
+	{
 
 		global $IN, $DB;
 		
@@ -864,6 +882,7 @@ class Registration_codes
 				AND $IN->GBL($this->settings['bypass_form_field'], 'POST') == $this->settings['bypass_code']
 			)
 			{
+				$this->debug_log("Execution: Bypassed");
 				return;
 			}
 		}
@@ -872,55 +891,110 @@ class Registration_codes
 		//	Check to see if there's a code match
 		// ---------------------------------------------
 		
-		$match = false;
-		
-		$submitted_code = $IN->GBL($this->settings['form_field'], 'POST');
+		$submitted_code = $IN->GBL($this->settings['form_field'], 'POST');		
 		
 		if ($submitted_code !== false)
 		{
-
-			$code_list = array();
+			
+			$this->debug_log("Execution: Submitted code: ".$submitted_code);
 			
 			$query = $DB->query(
 				"SELECT * FROM exp_rogee_registration_codes
 				WHERE site_id IN (0,".$this->this_site_id.")
-				AND code_string = ".$submitted_code
-				." LIMIT 1"
+				AND code_string = '".$submitted_code."' LIMIT 1"
 				);		
 
 			if ($query->num_rows == 1)
 			{
 				
 				// Woohoo! Match!
+				$this->debug_log("Execution: Matched code: ".$submitted_code);
 				
-				$match = true;
 				$destination_group = $query->row['destination_group'];
-				
-				// Get some info from the hook
 				
 				$g = $data['group_id'];
 				$u = $data['username'];
 				
-				// If they're not already in the intended destination group, move them.
-				
-				if ($destination_group != $g)
+				// ---------------------------------------------
+				//	If they're not already in the intended destination group, move them.
+				//	UNLESS the destination group is 0, in which case we're just passing them through...
+				// ---------------------------------------------
+					
+				if (($destination_group != $g) AND ($destination_group != 0))
 				{
 					
+					// ---------------------------------------------
+					//	If I don't have a username in the hook data, I have to search by username.
+					//	If I do have a $member_id (i.e. from the Solspace hook), I'll search by member_id.
+					// ---------------------------------------------
+					
+					$search_param = ($member_id ? array('member_id' => $member_id) : array('username' => $u));
+					
 					$DB->query(
-						$DB->update_string('exp_members', array('group_id' => $destination_group), array('username' => $u))
+						$DB->update_string('exp_members', array('group_id' => $destination_group), $search_param)
 					);
 					
-					$this->debug_log("Moving member [".$u."] to group $destination_group. (Code: ".$query->row['code_string'].")");
+					$this->debug_log("Execution: Moving member [".$u."] to group $destination_group. (Code: ".$query->row['code_string'].")");
 					
+				}
+				else
+				{
+					$this->debug_log("Execution: Member ".$u." is already in group ".$g);
 				}
 				
 			}
+			else
+			{
+				$this->debug_log("Execution: No match");
+			}
 
+		}
+		else
+		{
+			$this->debug_log("Execution: No registration code submitted");
 		}
 		
 	}
 	// END execute_registration_code()
 	
+
+
+	/**
+	* ==============================================
+	* Execute registration code on Solspace User Hook
+	* ==============================================
+	*
+	* This method runs when a new member registration is performed through the Solspace User module.
+	* It intercepts the Solspace hook data, transforms it into the format supplied by the EE hook,
+	* and forwards it to the normal execute_registration_code hook function.
+	*
+	* @param $data Object: the User object
+	* @param $member_id int: the member_id from the User
+	*
+	*/
+	function execute_registration_code_solspace($data, $id='false') {
+
+		// ---------------------------------------------
+		// execute_registration_code() is expecting:
+		// - $data: an array containing ['username'] and ['group_id']
+		// - $id: the numeric member_id
+		// ---------------------------------------------
+		
+		$this->debug_log("Solspace hook: Re-arranging data...");
+		
+		$u = (isset($data->insert_data['username']) ? $data->insert_data['username'] : "");
+		$g = (isset($data->insert_data['group_id']) ? $data->insert_data['group_id'] : 0);
+		
+		$return_data = array(
+			'username' => $u,
+			'group_id' => $g
+		);
+
+		$this->execute_registration_code($return_data, $id);
+		
+	}
+	// END execute_registration_code_solspace()
+
 
 
 	/**
@@ -1036,7 +1110,7 @@ class Registration_codes
 	* @see http://cubiq.org/the-perfect-php-clean-url-generator
 	*
 	*/
-	private function clean_string($str, $remove_spaces) {
+	private function clean_string($str='', $remove_spaces=false) {
 	
 		$clean = preg_replace("/[^a-zA-Z0-9\/_| -]/", '', $str);
 		$clean = trim($clean, '-');
