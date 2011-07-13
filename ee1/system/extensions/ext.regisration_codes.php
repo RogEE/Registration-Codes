@@ -47,7 +47,7 @@ class Registration_codes
     // ---------------------------------------------
     
 	var $settings = array();
-	var $dev_on = FALSE;
+	var $dev_on = TRUE;
 	var $nuke_log_on_uninstall = FALSE;
 
 	// ---------------------------------------------
@@ -880,7 +880,7 @@ class Registration_codes
 			)
 			{
 				$this->debug_log("Execution: Bypassed");
-				return;
+				return $data;
 			}
 		}
 
@@ -950,6 +950,8 @@ class Registration_codes
 		{
 			$this->debug_log("Execution: No registration code submitted");
 		}
+		
+		return $data;
 		
 	}
 	// END execute_registration_code()
